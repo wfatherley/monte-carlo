@@ -13,13 +13,25 @@ class SSA:
     def __init__(self, a=None, version=None):
         """Initializer for all three SSA methods."""
         if a is not None or version is not None:
-            seed(a=a, version=version)
+            seed(a=a, version=(version or 2))
 
-    def direct(self, model):
+    def direct(self, model, count=1):
         """Indefinite generator of direct-method trajectories"""
-
-        yield model.trajectory
-        model.reset()
+        while count > 0:
+            while not model.exit():
+                propen = dict()
+                for k,v in model.propen.items():
+                    propen[k] = v(model)
+                partition = sum(propen.values())
+                for k in propensities.keys():
+                    propen[k] = propen[k] / partition
+                model["time"].append(
+                    log(1 / random()) / partition
+                )
+                # WIP propensity MC
+            yield model.trajectory
+            model.reset()
+            count -= 1
 
     def first_reaction(self, model):
         """Indefinite generator of 1st-reaction trajectories"""
@@ -31,9 +43,18 @@ class SSA:
 
 
 class Model(dict):
-    def __init__(self, exitlambda=None, **species):
-        self.exitlambda = exitlambda
-        
+    """
+    - self is a dict of N species and a temporal param
+    - self.stoich is a dict of M stoichiometry lists
+    - self.propen is dict of M propensity lambdas
+    """
+    def __init__(self, initia, propen, stoich):
+        self.propen = propen.items().sort(key=lambda t: t[0])
+        self.stoich = stoich.items().sort(key=lambda t: t[0])
+        super().__init__(**initia)
+
+    def exit(self):
+        pass
         
     def reset(self):
         for key in self.keys():
