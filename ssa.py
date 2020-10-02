@@ -2,16 +2,11 @@ from math import log
 from random import random, seed
 
 
-class SSAException(Exception):
-    """A simple exception."""
-    pass
-
-
 class SSA:
     """Container for Stochastic Simulation Algorithms"""
 
     def __init__(self, a=None, version=None):
-        """Initializer for all three SSA methods."""
+        """Initializer for SSA methods."""
         if a is not None or version is not None:
             seed(a=a, version=(version or 2))
 
@@ -21,11 +16,9 @@ class SSA:
             while not model.exit():
 
                 # init step: reaction probabilties and partition func
-                probs = list((k, v(model)) for k,v in model.propen)
-                partition = sum(t[1] for t in probs)
-                probs = list(
-                    (k, v / partition) for k,v in probs
-                ).reverse()
+                weights = list((k, v(model)) for k,v in model.propen)
+                partition = sum(t[1] for t in weights)
+                weights = list((k, v / partition) for k,v in weights)
                 
                 # monte carlo step: next reaction time
                 model["time"].append(
@@ -36,18 +29,35 @@ class SSA:
                 next_reaction = partition * random()
                 curr_reaction = 0.0
                 while curr_reaction < next_reaction:
-                    curr_reaction += probs.pop()
-                reaction_stoich = model.stoich[probs.pop()[0]]
-                for k,v in reaction_stoich:
-                    model[k] += v
-                    
+                    curr_reaction += weights.pop()
+                reaction_stoich = model.stoich[weights.pop()[0]]
+
+                # update reaction species
+                for species, delta in reaction_stoich:
+                    model[species] += delta
+
             yield model.trajectory
             model.reset()
             count -= 1
 
     def first_reaction(self, model):
         """Generator of 1st-reaction trajectories"""
-        pass
+        while count > 0:
+            while not model.exit():
+
+                # monte carlo step: generate reaction times
+                times = list(
+                    (k,  log(1.0 / random()) / v(model))
+                    for k,v in model.propen
+                ).sort(key=lambda t: t[1])
+
+                # update reaction species
+                for species, delta in reaction_stoich:
+                    model[species] += delta
+
+            yield model.trajectory
+            model.reset()
+            count -= 1
 
     def first_family(self, model):
         """Generator of 1st-family trajectories"""
@@ -61,8 +71,10 @@ class Model(dict):
     - self.propen is dict of M propensity lambdas
     """
     def __init__(self, initia, propen, stoich):
-        self.propen = propen.items().sort(key=lambda t: t[0])
-        self.stoich = stoich.items().sort(key=lambda t: t[0])
+        self.propen = propen.items().sort(
+            key=lambda t: t[0], reverse=True
+        )
+        self.stoich = stoich.items()
         super().__init__(**initia)
 
     def exit(self):
