@@ -16,29 +16,41 @@ class SSA:
             seed(a=a, version=(version or 2))
 
     def direct(self, model, count=1):
-        """Indefinite generator of direct-method trajectories"""
+        """Generator of direct-method trajectories"""
         while count > 0:
             while not model.exit():
-                propen = dict()
-                for k,v in model.propen.items():
-                    propen[k] = v(model)
-                partition = sum(propen.values())
-                for k in propensities.keys():
-                    propen[k] = propen[k] / partition
+
+                # init step: reaction probabilties and partition func
+                probs = list((k, v(model)) for k,v in model.propen)
+                partition = sum(t[1] for t in probs)
+                probs = list(
+                    (k, v / partition) for k,v in probs
+                ).reverse()
+                
+                # monte carlo step: next reaction time
                 model["time"].append(
-                    log(1 / random()) / partition
+                    log(1.0 / random()) / partition
                 )
-                # WIP propensity MC
+
+                # monte carlo step: next reaction
+                next_reaction = partition * random()
+                curr_reaction = 0.0
+                while curr_reaction < next_reaction:
+                    curr_reaction += probs.pop()
+                reaction_stoich = model.stoich[probs.pop()[0]]
+                for k,v in reaction_stoich:
+                    model[k] += v
+                    
             yield model.trajectory
             model.reset()
             count -= 1
 
     def first_reaction(self, model):
-        """Indefinite generator of 1st-reaction trajectories"""
+        """Generator of 1st-reaction trajectories"""
         pass
 
     def first_family(self, model):
-        """Indefinite generator of 1st-family trajectories"""
+        """Generator of 1st-family trajectories"""
         pass
 
 
