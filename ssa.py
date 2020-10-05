@@ -40,7 +40,7 @@ class SSA:
             model.reset()
             count -= 1
 
-    def first_reaction(self, model):
+    def first_reaction(self, model, count=1):
         """Generator of 1st-reaction trajectories"""
         while count > 0:
             while not model.exit():
@@ -51,7 +51,11 @@ class SSA:
                     for k,v in model.propen
                 ).sort(key=lambda t: t[1])
 
+                # update next reaction time
+                model["time"].append(times[0][1])
+
                 # update reaction species
+                reaction_stoich = model.stoich[times[0][0]]
                 for species, delta in reaction_stoich:
                     model[species] += delta
 
@@ -59,13 +63,35 @@ class SSA:
             model.reset()
             count -= 1
 
-    def first_family(self, model):
+    def first_family(self, model, count=1, families=1):
         """Generator of 1st-family trajectories"""
-        pass
+        while count > 0:
+            
+            # build list of families
+            families_list = list()
+            family_size = len(model.propen) // families
+            i = 0
+            for j in range(families):
+                if j < families - 1:
+                    families_list.append(
+                        (j, model.propen[i:i+family_size])
+                    )
+                else:
+                    families_list.append(
+                        (j, model.propen[i:i+family_size])
+                    )
+
+            while not model.exit():
+                
+            yield model.trajectory
+            model.reset()
+            count -= 1
+
 
 
 class Model(dict):
     """
+    WIP
     - self is a dict of N species and a temporal param
     - self.stoich is a dict of M stoichiometry lists
     - self.propen is dict of M propensity lambdas
