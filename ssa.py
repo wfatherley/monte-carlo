@@ -3,11 +3,6 @@ from random import random, seed
 from warnings import warn
 
 
-class SSAException(Exception):
-    """Exception for this module"""
-    pass
-
-
 class SSA:
     """Container for Stochastic Simulation Algorithms"""
 
@@ -126,3 +121,6 @@ class Model(dict):
         
     def reset(self):
         pass
+
+
+__all__ = ["Model", "SSA"]
