@@ -1,5 +1,11 @@
 from math import log
 from random import random, seed
+from warnings import warn
+
+
+class SSAException(Exception):
+    """Exception for this module"""
+    pass
 
 
 class SSA:
@@ -20,12 +26,12 @@ class SSA:
                 partition = sum(t[1] for t in weights)
                 weights = list((k, v / partition) for k,v in weights)
                 
-                # monte carlo step: next reaction time
+                # monte carlo step 1: next reaction time
                 model["time"].append(
                     log(1.0 / random()) / partition
                 )
 
-                # monte carlo step: next reaction
+                # monte carlo step 2: next reaction
                 next_reaction = partition * random()
                 curr_reaction = 0.0
                 while curr_reaction < next_reaction:
@@ -38,7 +44,6 @@ class SSA:
 
             yield model.trajectory
             model.reset()
-            count -= 1
 
     def first_reaction(self, model):
         """Indefinite generator of 1st-reaction trajectories"""
@@ -61,32 +66,45 @@ class SSA:
 
             yield model.trajectory
             model.reset()
-            count -= 1
 
     def first_family(self, model, families=2):
         """Indefinite generator of 1st-family trajectories"""
 
-        # build list of families
-        families_list = list()
-        family_size = len(model.propen) // families
-        i = 0
-        for j in range(families):
-            if j < families - 1:
-                families_list.append(
-                    (j, model.propen[i:i+family_size])
-                )
-            else:
-                families_list.append(
-                    (j, model.propen[i:i+family_size])
-                )
+        # switch ladder for choosing method
+        if len(model.propen) < families:
+            warn("Too many families, using direct-method")
+            return self.direct(model)
+        elif families == 1:
+            return self.direct(model)
+        elif len(model.propen) == families:
+            return self.first_reaction(model)
+        else:
 
-        while True:
-            while not model.exit():
+            # compute family partition info
+            family_size = len(model.propen) // families
+            orphans = len(model.propen) % families
 
-            yield model.trajectory
-            model.reset()
-            count -= 1
+            # gather family indicies of propensities
+            family_indices = list()
+            head = 0
+            tail = family_size - 1
+            for i in range(families):
+                family_indicies.append((i, (head, tail)))
+                head += family_size - 1
+                tail += family_size - 1
+            if orphans > 0:
+                family_indicies[-1][1] += oprhans
 
+            while True:
+                while not model.exit():
+
+                    # monte carlo step: generate random floats
+                    random_floats = list(
+                        random() for _ in range(familes+1)
+                    )
+
+                yield model.trajectory
+                model.reset()
 
 
 class Epidemic(dict):
@@ -95,43 +113,17 @@ class Epidemic(dict):
         self,
         initial_conditions: dict,
         propensities: dict,
-        stoichiometry: dict
+        stoichiometries: dict
     ):
         self.propen = sorted(
             propensities.items(), reverse=True
         )
         self.stoich = list(stoichiometry.items())
         super().__init__(**initial_conditions)
-        
+
     def exit(self):
         pass
         
     def reset(self):
         for key in self.keys():
             del self[key][1:]
-
-
-def first_family(model, families=2):
-    """Indefinite generator of 1st-family trajectories"""
-    # build list of families
-    families_list = list()
-    family_size = len(model.propen) // families
-    i = 0
-    for j in range(families):
-        if j == families - 1:
-            family_size += len(model.propen) % families
-        families_list.append(
-            (j, model.propen[i:i+family_size])
-        )
-        i += family_size
-        return families_list
-        
-ic = dict(s=99,i=1,r=0)
-p = {
-    0: lambda d: 0.5 * d["s"] * d["i"] / sum(d.values()),
-    1: lambda d: 1.0 * d["i"],
-}
-s = {
-    0: {"s": -1, "i": 1, "r": 0},
-    1: {"s": 0, "i": -1, "r": 1}
-}
