@@ -107,7 +107,7 @@ class SSA:
                 model.reset()
 
 
-class Epidemic(dict):
+class Model(dict):
     """Simple model to meet design of class SSA"""
     def __init__(
         self,
@@ -125,5 +125,4 @@ class Epidemic(dict):
         pass
         
     def reset(self):
-        for key in self.keys():
-            del self[key][1:]
+        pass
