@@ -7,7 +7,7 @@ class SSA:
     """Container for Stochastic Simulation Algorithms"""
 
     def __init__(self, a=None, version=None):
-        """Initializer for SSA methods."""
+        """Initializer for SSA methods"""
         if a is not None or version is not None:
             seed(a=a, version=(version or 2))
 
@@ -30,11 +30,11 @@ class SSA:
                 next_reaction = partition * random()
                 curr_reaction = 0.0
                 while curr_reaction < next_reaction:
-                    curr_reaction += weights.pop()
+                    curr_reaction += weights.pop()[1]
                 reaction_stoich = model.stoich[weights.pop()[0]]
 
                 # update reaction species
-                for species, delta in reaction_stoich:
+                for species, delta in reaction_stoich.items():
                     model[species] += delta
 
             yield model.trajectory
@@ -64,7 +64,7 @@ class SSA:
 
     def first_family(self, model, families=2):
         """Indefinite generator of 1st-family trajectories"""
-
+        
         # switch ladder for choosing method
         if len(model.propen) < families:
             warn("Too many families, using direct-method")
@@ -90,6 +90,7 @@ class SSA:
             if orphans > 0:
                 family_indicies[-1][1] += oprhans
 
+            # main loops
             while True:
                 while not model.exit():
 
