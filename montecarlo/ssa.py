@@ -15,22 +15,22 @@ class SSA:
         """Indefinite generator of direct-method trajectories"""
         while True:
             while not model.exit():
-
+                
                 # init step: reaction probabilties and partition func
                 weights = list((k, v(model)) for k,v in model.propen)
                 partition = sum(t[1] for t in weights)
-                weights = list((k, v / partition) for k,v in weights)
                 
                 # monte carlo step 1: next reaction time
                 model["time"].append(
                     log(1.0 / random()) / partition
                 )
-
+                
                 # monte carlo step 2: next reaction
                 next_reaction = partition * random()
                 curr_reaction = 0.0
                 while curr_reaction < next_reaction:
                     curr_reaction += weights.pop()[1]
+                        
                 reaction_stoich = model.stoich[weights.pop()[0]]
 
                 # update reaction species
