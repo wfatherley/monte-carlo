@@ -16,7 +16,7 @@ class SSA:
         while True:
             while not model.exit():
                 
-                # init step: reaction probabilties and partition func
+                # init step: evaluate propensities and partition
                 weights = list((k, v(model)) for k,v in model.propen)
                 partition = sum(t[1] for t in weights)
                 
@@ -26,18 +26,21 @@ class SSA:
                 )
                 
                 # monte carlo step 2: next reaction
-                next_reaction = partition * random()
-                curr_reaction = 0.0
-                while curr_reaction < next_reaction:
-                    curr_reaction += weights.pop()[1]
-                        
-                reaction_stoich = model.stoich[weights.pop()[0]]
-
+                partition = partition * random()
+                j = 0
+                while partition >= 0.0:
+                    reaction = weights.pop()
+                    partition -= reaction[1]
+                reaction_stoich = model.stoich[reaction[0]][1]
+                
                 # update reaction species
                 for species, delta in reaction_stoich.items():
-                    model[species] += delta
+                    print(species, delta)
+                    model[species].append(
+                        model[species][-1] + delta
+                    )
 
-            yield model.trajectory
+            yield model.items()
             model.reset()
 
     def first_reaction(self, model):
@@ -59,7 +62,7 @@ class SSA:
                 for species, delta in reaction_stoich:
                     model[species] += delta
 
-            yield model.trajectory
+            yield model.items()
             model.reset()
 
     def first_family(self, model, families=2):
@@ -99,7 +102,7 @@ class SSA:
                         random() for _ in range(familes+1)
                     )
 
-                yield model.trajectory
+                yield model.items()
                 model.reset()
 
 
@@ -111,10 +114,10 @@ class Model(dict):
         propensities: dict,
         stoichiometries: dict
     ):
-        self.propen = sorted(
-            propensities.items(), reverse=True
-        )
+        self.propen = list(propensities.items())
         self.stoich = list(stoichiometry.items())
+        for key in initial_conditions.keys():
+
         super().__init__(**initial_conditions)
 
     def exit(self):
