@@ -1,7 +1,6 @@
-from ssa import SSA
-from ssa import Model as SSAModel
+from ssa import Base as BaseSSA
 
 
 class MCException(Exception):
-    """Exception for this module"""
+    """Simple monte-carlo exception"""
     pass

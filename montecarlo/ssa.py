@@ -1,69 +1,83 @@
 from math import log
-from random import random, seed
+from random import random
 from warnings import warn
 
 
-class SSA:
+class Base(dict):
     """Container for Stochastic Simulation Algorithms"""
 
-    def __init__(self, a=None, version=None):
-        """Initializer for SSA methods"""
-        if a is not None or version is not None:
-            seed(a=a, version=(version or 2))
-
-    def direct(self, model):
+    def __init__(
+        self,
+        initial_conditions,
+        propensities,
+        stoichiomemtry
+    ):
+        """Initialize SSA"""
+        self.propen = list(propensities.items())
+        self.stoich = list(stoichiometry.items())
+        super().__init__(**initial_conditions)
+        
+    def exit(self, *args, **kwargs):
+        """Return True if conditions met, else False"""
+        raise NotImplementedError
+        
+    def reset(self, *args, **kwargs):
+        """Clean up trajectory on or after exit"""
+        raise NotImplementedError
+        
+    def direct(self):
         """Indefinite generator of direct-method trajectories"""
         while True:
-            while not model.exit():
+            while not self.exit():
                 
                 # init step: evaluate propensities and partition
-                weights = list((k, v(model)) for k,v in model.propen)
-                partition = sum(t[1] for t in weights)
+                weights = list((k, v(self)) for k,v in self.propen)
+                partition = sum(tup[1] for tup in weights)
                 
                 # monte carlo step 1: next reaction time
-                model["time"].append(
-                    log(1.0 / random()) / partition
+                sojourn = log(1.0 / random()) / partition
+                self["time"].append(
+                    self["time"][-1] + sojourn
                 )
                 
                 # monte carlo step 2: next reaction
                 partition = partition * random()
-                j = 0
+                j = len(weights) - 1
                 while partition >= 0.0:
-                    reaction = weights.pop()
-                    partition -= reaction[1]
-                reaction_stoich = model.stoich[reaction[0]][1]
+                    partition -= weights.pop()[1]
+                    j -= 1
+                reaction_stoich = self.stoich[j][1]
                 
-                # update reaction species
+                # final step: update reaction species
                 for species, delta in reaction_stoich.items():
-                    print(species, delta)
-                    model[species].append(
-                        model[species][-1] + delta
+                    self[species].append(
+                        self[species][-1] + delta
                     )
-
-            yield model.items()
-            model.reset()
-
-    def first_reaction(self, model):
+                
+            yield self.items()
+            self.reset()
+            
+    def first_reaction(self):
         """Indefinite generator of 1st-reaction trajectories"""
         while True:
-            while not model.exit():
+            while not self.exit():
 
                 # monte carlo step: generate reaction times
                 times = list(
                     (k,  log(1.0 / random()) / v(model))
-                    for k,v in model.propen
+                    for k,v in self.propen
                 ).sort(key=lambda t: t[1])
 
                 # update next reaction time
                 model["time"].append(times[0][1])
 
                 # update reaction species
-                reaction_stoich = model.stoich[times[0][0]]
+                reaction_stoich = self.stoich[times[0][0]]
                 for species, delta in reaction_stoich:
-                    model[species] += delta
+                    self[species] += delta
 
-            yield model.items()
-            model.reset()
+            yield self.items()
+            self.reset()
 
     def first_family(self, model, families=2):
         """Indefinite generator of 1st-family trajectories"""
@@ -106,25 +120,4 @@ class SSA:
                 model.reset()
 
 
-class Model(dict):
-    """Simple model to meet design of class SSA"""
-    def __init__(
-        self,
-        initial_conditions: dict,
-        propensities: dict,
-        stoichiometries: dict
-    ):
-        self.propen = list(propensities.items())
-        self.stoich = list(stoichiometry.items())
-        for key in initial_conditions.keys():
-
-        super().__init__(**initial_conditions)
-
-    def exit(self):
-        pass
-        
-    def reset(self):
-        pass
-
-
-__all__ = ["Model", "SSA"]
+__all__ = ["Base"]
