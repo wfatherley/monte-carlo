@@ -103,7 +103,10 @@ class SSAModel(dict):
 
     def exit(self):
         """Return True to break out of trajectory"""
-        raise NotImplementedError
+        if len(self.valid_reactions) == 0:
+            return True
+        else:
+            return False
 
     @property
     def propensities(self):
