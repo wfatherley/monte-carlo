@@ -1,5 +1,5 @@
-from mha import Base as BaseMHA
-from ssa import Base as BaseSSA
+from mha import MHA, MHAModel
+from ssa import SSA, SSAModel
 
 
 class MCException(Exception):
