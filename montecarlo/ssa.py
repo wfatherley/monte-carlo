@@ -2,7 +2,7 @@
 from math import log
 from random import random
 
-from . import MCException
+from . import MCException, Mersenne
 
 
 class SSA:
@@ -10,6 +10,7 @@ class SSA:
 
     def __init__(self, model):
         """Initialize container with model"""
+        self.random = Mersenne()
         self.model = model
         
     def direct(self):
@@ -21,11 +22,13 @@ class SSA:
                     in self.model.propensities.values()
                 )
                 partition = sum(w for w in weights)
-                sojourn = log(1.0 / random()) / partition
+                sojourn = log(
+                    1.0 / self.random.floating()
+                ) / partition
                 self.model["time"].append(
                     self.model["time"][-1] + sojourn
                 )
-                partition = partition * random()
+                partition = partition * self.random.floating()
                 j = 0
                 while partition >= 0.0:
                     partition -= weights.pop(0)
