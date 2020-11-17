@@ -1,7 +1,6 @@
 """Stochastic Simulation Algorithm (SSA)"""
 from math import log
-
-from .random import Mersenne
+from random import random
 
 
 class SSA:
@@ -9,14 +8,13 @@ class SSA:
 
     def __init__(self, model):
         """Initialize container with model"""
-        self.random = Mersenne()
         self.model = model
         
     def direct(self):
         """Indefinite generator of direct-method trajectories"""
         while True:
             while not self.model.exit():
-                print(self.model.reactions)
+                
                 # evaluate weights and partition
                 weights = [
                     propensity(self.model) for propensity
@@ -26,14 +24,14 @@ class SSA:
 
                 # evaluate next rxn time
                 sojourn = log(
-                    1.0 / self.random.floating()
+                    1.0 / random()
                 ) / partition
                 self.model["time"].append(
                     self.model["time"][-1] + sojourn
                 )
 
                 # evaluate next rxn
-                partition = partition * self.random.floating()
+                partition = partition * random()
                 j = 0
                 while partition >= 0.0:
                     partition -= weights.pop(0)
@@ -45,8 +43,7 @@ class SSA:
                     )
 
                 self.model.curate()
-                
-            yield self.model.items()
+            yield self.model
             self.model.reset()
             
     # def first_reaction(self):
@@ -114,8 +111,15 @@ class SSAModel(dict):
 
     def exit(self):
         """Return True to break out of trajectory"""
-        if len(self.reactions) == 0: return True
-        else: return False
+        if len(self.reactions) == 0:
+            while len(self.excluded_reactions) > 0:
+                self.reactions.append(
+                    self.excluded_reactions.pop()
+                )
+            self.reactions.sort()
+            return True
+        else:
+            return False
 
     def curate(self):
         """Validate and invalidate model reactions"""
@@ -128,7 +132,8 @@ class SSAModel(dict):
                 self.excluded_reactions.append(reaction)
             else:
                 reactions.append(reaction)
-        self.reactions = reactions.sort()
+        reactions.sort()
+        self.reactions = reactions
 
         # evaluate impossible reactions
         excluded_reactions = []
@@ -138,7 +143,8 @@ class SSAModel(dict):
                 self.reactions.append(reaction)
             else:
                 excluded_reactions.append(reaction)
-        self.excluded_reactions = excluded_reactions.sort()
+        excluded_reactions.sort()
+        self.excluded_reactions = excluded_reactions
         
     @property
     def propensities(self):
