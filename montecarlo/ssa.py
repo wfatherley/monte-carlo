@@ -17,8 +17,9 @@ class SSA:
                 
                 # evaluate weights and partition
                 weights = [
-                    rxn, sto, pro(self.model)
-                    for rxn,sto,pro in self.model.reactions
+                    (rxn, sto, pro(self.model))
+                    for (rxn, sto, pro)
+                    in self.model.reactions
                 ]
                 partition = sum(w[-1] for w in weights)
 
@@ -34,8 +35,8 @@ class SSA:
                 partition = partition * random()
                 while partition >= 0.0:
                     rxn, sto, pro = weights.pop(0)
-                    partition -= weight[-1]
-                for species, delta in sto:
+                    partition -= pro
+                for species, delta in sto.items():
                     self.model[species].append(
                         self.model[species][-1] + delta
                     )
@@ -107,7 +108,7 @@ class SSAModel(dict):
                 self.excluded_reactions.append(
                     (
                         reaction,
-                        stiochiometry[reaction],
+                        stoichiometry[reaction],
                         propensity
                     )
                 )
@@ -115,7 +116,7 @@ class SSAModel(dict):
                 self.reactions.append(
                     (
                         reaction,
-                        stiochiometry[reaction],
+                        stoichiometry[reaction],
                         propensity
                     )
                 )
@@ -139,7 +140,7 @@ class SSAModel(dict):
         reactions = []
         while len(self.reactions) > 0:
             reaction = self.reactions.pop()
-            if reaction[1][1](self) == 0:
+            if reaction[2](self) == 0:
                 self.excluded_reactions.append(reaction)
             else:
                 reactions.append(reaction)
@@ -150,7 +151,7 @@ class SSAModel(dict):
         excluded_reactions = []
         while len(self.excluded_reactions) > 0:
             reaction = self.excluded_reactions.pop()
-            if reaction[1][1](self) > 0:
+            if reaction[2](self) > 0:
                 self.reactions.append(reaction)
             else:
                 excluded_reactions.append(reaction)
