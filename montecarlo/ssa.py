@@ -17,12 +17,12 @@ class SSA:
                 
                 # evaluate weights and partition
                 weights = [
-                    propensity(self.model) for propensity
-                    in self.model.propensities.values()
+                    rxn, sto, pro(self.model)
+                    for rxn,sto,pro in self.model.reactions
                 ]
-                partition = sum(w for w in weights)
+                partition = sum(w[-1] for w in weights)
 
-                # evaluate next rxn time
+                # evaluate sojourn time
                 sojourn = log(
                     1.0 / random()
                 ) / partition
@@ -30,14 +30,12 @@ class SSA:
                     self.model["time"][-1] + sojourn
                 )
 
-                # evaluate next rxn
+                # evaluate the reaction
                 partition = partition * random()
-                j = 0
                 while partition >= 0.0:
-                    partition -= weights.pop(0)
-                    j += 1
-                reaction_stoich = self.model.stoichiometry[j-1]
-                for species, delta in reaction_stoich.items():
+                    rxn, sto, pro = weights.pop(0)
+                    partition -= weight[-1]
+                for species, delta in sto:
                     self.model[species].append(
                         self.model[species][-1] + delta
                     )
@@ -101,13 +99,26 @@ class SSAModel(dict):
         self, initial_conditions, propensities, stoichiometry
     ):
         """Initialize model"""
-        for k,v in propensities.items():
-            stoichiometry[k] = (
-                stoichiometry[k], v
-            )
-        self.reactions = sorted(stoichiometry.items())
-        self.excluded_reactions = list()
         super().__init__(**initial_conditions)
+        self.reactions = list()
+        self.excluded_reactions = list()
+        for reaction,propensity in propensities.items():
+            if propensity(self) == 0.0:
+                self.excluded_reactions.append(
+                    (
+                        reaction,
+                        stiochiometry[reaction],
+                        propensity
+                    )
+                )
+            else:
+                self.reactions.append(
+                    (
+                        reaction,
+                        stiochiometry[reaction],
+                        propensity
+                    )
+                )
 
     def exit(self):
         """Return True to break out of trajectory"""
