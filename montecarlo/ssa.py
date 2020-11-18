@@ -50,55 +50,34 @@ class SSA:
     def first_reaction(self):
         """Indefinite generator of 1st-reaction trajectories"""
         while True:
-            while not self.exit():
+            while not self.model.exit():
+
+                # evaluate next reaction times
                 times = [
                     (
-                        k,
                         log(
                             1.0 / self.random.floating()
-                        ) / pro(self.model)
+                        ) / pro(self.model),
+                        sto
                     )
-                    for (rxn, sto, pro) in self.reactions
+                    for (rxn, sto, pro) in self.model.reactions
                 ]
-                times.sort(key=lambda t: t[1])
-                self.model["time"].append(times[0][1])
-                reaction_stoich = self.stoich[times[0][0]]
-                for species, delta in reaction_stoich:
-                    self[species] += delta
+                times.sort()
+
+                # evaluate reaction time
+                self.model["time"].append(
+                    self.model["time"][-1] + times[0][0]
+                )
+
+                # evaluate reaction
+                for species, delta in times[0][1].items():
+                    self.model[species].append(
+                        self.model[species][-1] + delta
+                    )
+
+                self.model.curate()
             yield self.model
-            self.reset()
-
-    # def first_family(self, model, families=2):
-    #     """Indefinite generator of 1st-family trajectories"""
-    #     if len(model.propen) < families:
-    #         warn("Too many families, using direct-method")
-    #         return self.direct(model)
-    #     elif families == 1:
-    #         return self.direct(model)
-    #     elif len(model.propen) == families:
-    #         return self.first_reaction(model)
-    #     else:
-    #         family_size = len(model.propen) // families
-    #         orphans = len(model.propen) % families
-    #         family_indices = list()
-    #         head = 0
-    #         tail = family_size - 1
-    #         for i in range(families):
-    #             family_indicies.append((i, (head, tail)))
-    #             head += family_size - 1
-    #             tail += family_size - 1
-    #         if orphans > 0:
-    #             family_indicies[-1][1] += oprhans
-    #         while True:
-    #             while not model.exit():
-
-    #                 # monte carlo step: generate random floats
-    #                 random_floats = list(
-    #                     random() for _ in range(familes+1)
-    #                 )
-
-    #             yield model.items()
-    #             model.reset()
+            self.model.reset()
 
 
 class SSAModel(dict):

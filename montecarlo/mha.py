@@ -10,7 +10,13 @@
 from random import random
 
 
-class Base(dict):
+class MHA:
     """Container for MHAs"""
     def __init__(self, *args, **kwargs):
+        pass
+
+    def asymmetric(self):
+        pass
+
+    def symmetric(self):
         pass
