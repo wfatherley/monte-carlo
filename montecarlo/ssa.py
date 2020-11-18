@@ -1,15 +1,17 @@
 """Stochastic Simulation Algorithm (SSA)"""
 from math import log
-from random import random
+
+from .random import Mersenne
 
 
 class SSA:
     """Container for SSAs"""
 
-    def __init__(self, model):
+    def __init__(self, model, seed=1234):
         """Initialize container with model"""
         self.model = model
-        
+        self.random = Mersenne(seed=seed)
+
     def direct(self):
         """Indefinite generator of direct-method trajectories"""
         while True:
@@ -25,14 +27,14 @@ class SSA:
 
                 # evaluate sojourn time
                 sojourn = log(
-                    1.0 / random()
+                    1.0 / self.random.floating()
                 ) / partition
                 self.model["time"].append(
                     self.model["time"][-1] + sojourn
                 )
 
                 # evaluate the reaction
-                partition = partition * random()
+                partition = partition * self.random.floating()
                 while partition >= 0.0:
                     rxn, sto, pro = weights.pop(0)
                     partition -= pro
@@ -45,20 +47,26 @@ class SSA:
             yield self.model
             self.model.reset()
             
-    # def first_reaction(self):
-    #     """Indefinite generator of 1st-reaction trajectories"""
-    #     while True:
-    #         while not self.exit():
-    #             times = list(
-    #                 (k,  log(1.0 / random()) / v(model))
-    #                 for k,v in self.propen
-    #             ).sort(key=lambda t: t[1])
-    #             model["time"].append(times[0][1])
-    #             reaction_stoich = self.stoich[times[0][0]]
-    #             for species, delta in reaction_stoich:
-    #                 self[species] += delta
-    #         yield self.items()
-    #         self.reset()
+    def first_reaction(self):
+        """Indefinite generator of 1st-reaction trajectories"""
+        while True:
+            while not self.exit():
+                times = [
+                    (
+                        k,
+                        log(
+                            1.0 / self.random.floating()
+                        ) / pro(self.model)
+                    )
+                    for (rxn, sto, pro) in self.reactions
+                ]
+                times.sort(key=lambda t: t[1])
+                self.model["time"].append(times[0][1])
+                reaction_stoich = self.stoich[times[0][0]]
+                for species, delta in reaction_stoich:
+                    self[species] += delta
+            yield self.model
+            self.reset()
 
     # def first_family(self, model, families=2):
     #     """Indefinite generator of 1st-family trajectories"""
@@ -157,20 +165,10 @@ class SSAModel(dict):
                 excluded_reactions.append(reaction)
         excluded_reactions.sort()
         self.excluded_reactions = excluded_reactions
-        
-    @property
-    def propensities(self):
-        """Return map of valid propensities"""
-        return {k:v[1] for k,v in self.reactions}
 
     def reset(self):
         """Clear the trajectory"""
         for key in self: del self[key][1:]
-
-    @property
-    def stoichiometry(self):
-        """Return stoichiometry map"""
-        return {k:v[0] for k,v in self.reactions}
-
+        
 
 __all__ = ["SSA", "SSAModel"]
