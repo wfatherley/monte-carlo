@@ -131,15 +131,12 @@ class SSAModel(dict):
 
     def exit(self):
         """Return True to break out of trajectory"""
-        if len(self.reactions) == 0:
-            while len(self.excluded_reactions) > 0:
-                self.reactions.append(
-                    self.excluded_reactions.pop()
-                )
-            self.reactions.sort()
-            return True
-        else:
-            return False
+
+        # return True if no more reactions
+        if len(self.reactions) == 0: return True
+
+        # return False if there are more reactions
+        else: return False
 
     def curate(self):
         """Validate and invalidate model reactions"""
@@ -168,7 +165,12 @@ class SSAModel(dict):
 
     def reset(self):
         """Clear the trajectory"""
+
+        # reset species to initial conditions
         for key in self: del self[key][1:]
-        
+
+        # reset reactions per initial conditions
+        self.curate()
+
 
 __all__ = ["SSA", "SSAModel"]
