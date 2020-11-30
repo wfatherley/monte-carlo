@@ -84,10 +84,15 @@ class SSAModel(dict):
     """Container for SSA model"""
 
     def __init__(
-        self, initial_conditions, propensities, stoichiometry
+        self,
+        initial_conditions,
+        propensities,
+        stoichiometry,
+        max_duration=None
     ):
         """Initialize model"""
         super().__init__(**initial_conditions)
+        self.max_duration = max_duration
         self.reactions = list()
         self.excluded_reactions = list()
         for reaction,propensity in propensities.items():
@@ -113,9 +118,12 @@ class SSAModel(dict):
 
         # return True if no more reactions
         if len(self.reactions) == 0: return True
-
-        # return False if there are more reactions
         else: return False
+
+        # return True if there is no time left
+        if self.max_duration is not None:
+            if self["time"][-1] >= self.max_duration:
+                return True
 
     def curate(self):
         """Validate and invalidate model reactions"""
