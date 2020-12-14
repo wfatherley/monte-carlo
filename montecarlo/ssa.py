@@ -5,7 +5,7 @@ from .random import Mersenne
 
 
 class SSA:
-    """Container for SSAs"""
+    """Container for the SSA"""
 
     def __init__(self, model, seed=1234):
         """Initialize container with model"""
@@ -16,24 +16,18 @@ class SSA:
         """Indefinite generator of direct-method trajectories"""
         while True:
             while not self.model.exit():
-                
-                # evaluate weights and partition
                 weights = [
                     (rxn, sto, pro(self.model))
                     for (rxn, sto, pro)
-                    in self.model.reactions
+                    in self.model.events
                 ]
                 partition = sum(w[-1] for w in weights)
-
-                # evaluate sojourn time
                 sojourn = log(
                     1.0 / self.random.floating()
                 ) / partition
                 self.model["time"].append(
                     self.model["time"][-1] + sojourn
                 )
-
-                # evaluate the reaction
                 partition = partition * self.random.floating()
                 while partition >= 0.0:
                     rxn, sto, pro = weights.pop(0)
@@ -51,8 +45,6 @@ class SSA:
         """Indefinite generator of 1st-reaction trajectories"""
         while True:
             while not self.model.exit():
-
-                # evaluate next reaction times
                 times = [
                     (
                         log(
@@ -60,21 +52,16 @@ class SSA:
                         ) / pro(self.model),
                         sto
                     )
-                    for (rxn, sto, pro) in self.model.reactions
+                    for (rxn, sto, pro) in self.model.events
                 ]
                 times.sort()
-
-                # evaluate reaction time
                 self.model["time"].append(
                     self.model["time"][-1] + times[0][0]
                 )
-
-                # evaluate reaction
                 for species, delta in times[0][1].items():
                     self.model[species].append(
                         self.model[species][-1] + delta
                     )
-
                 self.model.curate()
             yield self.model
             self.model.reset()
@@ -93,70 +80,61 @@ class SSAModel(dict):
         """Initialize model"""
         super().__init__(**initial_conditions)
         self.max_duration = max_duration
-        self.reactions = list()
-        self.excluded_reactions = list()
-        for reaction,propensity in propensities.items():
+        self.events = list()
+        self.excluded_events = list()
+        for event, propensity in propensities.items():
             if propensity(self) == 0.0:
-                self.excluded_reactions.append(
+                self.excluded_events.append(
                     (
-                        reaction,
-                        stoichiometry[reaction],
+                        event,
+                        stoichiometry[event],
                         propensity
                     )
                 )
             else:
-                self.reactions.append(
+                self.events.append(
                     (
-                        reaction,
-                        stoichiometry[reaction],
+                        event,
+                        stoichiometry[event],
                         propensity
                     )
                 )
 
     def exit(self):
         """Return True to break out of trajectory"""
-
-        # return True if no more reactions
-        if len(self.reactions) == 0: return True
-        else: return False
-
-        # return True if there is no time left
+        if len(self.events) == 0:
+            return True
+        else:
+            return False
         if self.max_duration is not None:
             if self["time"][-1] >= self.max_duration:
                 return True
 
     def curate(self):
-        """Validate and invalidate model reactions"""
-        
-        # evaulate possible reactions
-        reactions = []
-        while len(self.reactions) > 0:
-            reaction = self.reactions.pop()
-            if reaction[2](self) == 0:
-                self.excluded_reactions.append(reaction)
+        """Validate and invalidate elementary events"""
+        events = []
+        while len(self.events) > 0:
+            event = self.events.pop()
+            if event[2](self) == 0:
+                self.excluded_events.append(event)
             else:
-                reactions.append(reaction)
-        reactions.sort()
-        self.reactions = reactions
-
-        # evaluate impossible reactions
-        excluded_reactions = []
-        while len(self.excluded_reactions) > 0:
-            reaction = self.excluded_reactions.pop()
-            if reaction[2](self) > 0:
-                self.reactions.append(reaction)
+                events.append(event)
+        events.sort()
+        self.events = events
+        excluded_events = []
+        while len(self.excluded_events) > 0:
+            event = self.excluded_events.pop()
+            if event[2](self) > 0:
+                self.events.append(event)
             else:
-                excluded_reactions.append(reaction)
-        excluded_reactions.sort()
-        self.excluded_reactions = excluded_reactions
+                excluded_events.append(event)
+        excluded_events.sort()
+        self.excluded_events = excluded_events
 
     def reset(self):
         """Clear the trajectory"""
-
-        # reset species to initial conditions
-        for key in self: del self[key][1:]
-
-        # reset reactions per initial conditions
+        for key in self:
+            del self[key][1:]
         self.curate()
 
 
