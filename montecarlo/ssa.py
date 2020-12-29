@@ -99,6 +99,8 @@ class SSAModel(dict):
                         propensity
                     )
                 )
+        self.events.sort()
+        self.excluded_events.sort()
 
     def exit(self):
         """Return True to break out of trajectory"""
@@ -119,8 +121,8 @@ class SSAModel(dict):
                 self.excluded_events.append(event)
             else:
                 events.append(event)
-        events.sort()
         self.events = events
+        self.events.sort()
         excluded_events = []
         while len(self.excluded_events) > 0:
             event = self.excluded_events.pop()
@@ -128,8 +130,8 @@ class SSAModel(dict):
                 self.events.append(event)
             else:
                 excluded_events.append(event)
-        excluded_events.sort()
         self.excluded_events = excluded_events
+        self.excluded_events.sort()
 
     def reset(self):
         """Clear the trajectory"""
