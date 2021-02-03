@@ -2,19 +2,10 @@ from warnings import warn
 
 
 class Mersenne:
-    """Pseudorandom number generater"""
+    """Pseudorandom object generater"""
 
     def __init__(self, seed=1234):
-        """
-        Initialize pseudorandom number generator. Accepts an
-        integer or floating-point seed, which is used in
-        conjunction with an integer multiplier, k, and the
-        Mersenne prime, j, to "twist" pseudorandom numbers out
-        of the latter. This member also initializes the order
-        of the generator's period, so that members floating and
-        integer can emit a warning when generation is about to
-        cycle and thus become not so pseudorandom.
-        """
+        """Constructs computation attributes"""
         self.seed = seed
         self.j = 2**31 - 1
         self.k = 16807
@@ -29,22 +20,16 @@ class Mersenne:
         otherwise a list of numbers is returned.
         """
         results = []
+        if interval is not None:
+            start, interval = interval[0], interval[1] - interval[0]
+        else:
+            start, interval = 0.0, 1.0
         for i in range(count):
             self.seed = (self.k * self.seed) % self.j
-            if interval is not None:
-                results.append(
-                    (
-                        interval[1] - interval[0]
-                    ) * (self.seed / self.j) + interval[0]
-                )
-            else: 
-                results.append(self.seed / self.j)
+            results.append((interval * (self.seed / self.j)) + start)
             self.period -= 1
             if self.period == 0:
-                warn(
-                    "Pseudorandom period nearing!!",
-                    category=ResourceWarning
-                )
+                warn("Pseudorandom period warning!!")
         if count == 1:
             return results.pop()
         else:
@@ -58,31 +43,14 @@ class Mersenne:
         single number is returned, otherwise a list of numbers
         is returned.
         """
-        results = []
-        for i in range(count):
-            self.seed = (self.k * self.seed) % self.j
-            if interval is not None:
-                results.append(
-                    int((
-                        interval[1] - interval[0] + 1
-                    ) * (self.seed / self.j) + interval[0])
-                )
-            else:
-                result = self.seed / self.j
-                if result < 0.50:
-                    results.append(0)
-                else:
-                    results.append(1)
-            self.period -= 1
-            if self.period == 0:
-                warn(
-                    "Pseudorandom period nearing!!",
-                    category=ResourceWarning
-                )
         if count == 1:
-            return results.pop()
-        else:
-            return results
+            return int(self.floating(interval=interval))
+        elif count > 1:
+            return [
+                int(f) for f in self.floating(
+                    interval=None, count=count
+                )
+            ]
 
 
 class MiddleSqaure:
