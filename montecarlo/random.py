@@ -52,6 +52,22 @@ class Mersenne:
                 )
             ]
 
+    def alpha(self, count=1):
+        """
+        Return a pseudorandom alphabetical letter (English).
+        By default, one letter in a-z is returned. If count is
+        greater than 1, a string a length count is returned.
+        """
+        chars = "abcdefghijklmnopqrstuvwxyz"
+        if count == 1:
+            return chars[self.integer(interval=(0,25))]
+        elif count > 1:
+            return "".join(
+                chars[f] for f in self.integer(
+                    interval=(0,25), count=count
+                )
+            )
+
 
 class MiddleSqaure:
     """WIP"""
