@@ -48,7 +48,7 @@ class Mersenne:
         elif count > 1:
             return [
                 int(f) for f in self.floating(
-                    interval=None, count=count
+                    interval=interval, count=count
                 )
             ]
 
