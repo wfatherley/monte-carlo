@@ -5,7 +5,7 @@ class Mersenne:
     """Pseudorandom object generater"""
 
     def __init__(self, seed=1234):
-        """Constructs computation attributes"""
+        """Construct pseudorandom computation attributes"""
         self.seed = seed
         self.j = 2**31 - 1
         self.k = 16807
@@ -47,11 +47,11 @@ class Mersenne:
             return int(self.floating(interval=interval))
         elif count > 1:
             return [
-                int(f) for f in self.floating(
+                round(f) for f in self.floating(
                     interval=interval, count=count
                 )
             ]
-
+            
     def alpha(self, count=1):
         """
         Return a pseudorandom alphabetical letter (English).
