@@ -104,13 +104,13 @@ class SSAModel(dict):
 
     def exit(self):
         """Return True to break out of trajectory"""
+        if self.max_duration is not None:
+            if self["time"][-1] >= self.max_duration:
+                return True
         if len(self.events) == 0:
             return True
         else:
             return False
-        if self.max_duration is not None:
-            if self["time"][-1] >= self.max_duration:
-                return True
 
     def curate(self):
         """Validate and invalidate elementary events"""
