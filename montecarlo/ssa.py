@@ -30,13 +30,12 @@ class SSA:
                 )
                 partition = partition * self.random.floating()
                 while partition >= 0.0:
-                    rxn, sto, pro = weights.pop(0)
+                    rxn, sto, pro = weights.pop()
                     partition -= pro
                 for species, delta in sto.items():
                     self.model[species].append(
                         self.model[species][-1] + delta
                     )
-
                 self.model.curate()
             yield self.model
             self.model.reset()
@@ -85,19 +84,11 @@ class SSAModel(dict):
         for event, propensity in propensities.items():
             if propensity(self) == 0.0:
                 self.excluded_events.append(
-                    (
-                        event,
-                        stoichiometry[event],
-                        propensity
-                    )
+                    (event, stoichiometry[event], propensity)
                 )
             else:
                 self.events.append(
-                    (
-                        event,
-                        stoichiometry[event],
-                        propensity
-                    )
+                    (event, stoichiometry[event], propensity)
                 )
         self.events.sort()
         self.excluded_events.sort()
@@ -122,7 +113,6 @@ class SSAModel(dict):
             else:
                 events.append(event)
         self.events = events
-        self.events.sort()
         excluded_events = []
         while len(self.excluded_events) > 0:
             event = self.excluded_events.pop()

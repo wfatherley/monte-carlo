@@ -44,7 +44,7 @@ class Mersenne:
         is returned.
         """
         if count == 1:
-            return int(self.floating(interval=interval))
+            return round(self.floating(interval=interval))
         elif count > 1:
             return [
                 round(f) for f in self.floating(
