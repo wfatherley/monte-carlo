@@ -1,6 +1,9 @@
 from warnings import warn
 
 
+__all__ = ["Mersenne", "MiddleSqaure"]
+
+
 class Mersenne:
     """Pseudorandom object generater"""
 
@@ -72,6 +75,3 @@ class Mersenne:
 class MiddleSqaure:
     """WIP"""
     pass
-
-
-__all__ = ["Mersenne", "MiddleSqaure"]

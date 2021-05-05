@@ -1,7 +1,8 @@
 """Stochastic Simulation Algorithm (SSA)"""
-from math import log
+from .core import log, Mersenne
 
-from .random import Mersenne
+
+__all__ = ["SSA", "SSAModel"]
 
 
 class SSA:
@@ -121,13 +122,9 @@ class SSAModel(dict):
             else:
                 excluded_events.append(event)
         self.excluded_events = excluded_events
-        self.excluded_events.sort()
 
     def reset(self):
         """Clear the trajectory"""
         for key in self:
             del self[key][1:]
         self.curate()
-
-
-__all__ = ["SSA", "SSAModel"]
