@@ -109,8 +109,7 @@ class SSAModel(dict):
                 return True
         if len(self.events) == 0:
             return True
-        else:
-            return False
+        return False
 
     def curate(self):
         """Validate and invalidate elementary events"""
