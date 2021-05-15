@@ -80,10 +80,10 @@ class SSAModel(dict):
     ):
         """Initialize model"""
         super().__init__(**initial_conditions)
-        for i, dictionaries in enumerate(stoichiometry):
-            if "time" in stoichiometry[i]:
-                print("Error, you are using a reserved word.")
-                return None
+    for sto in stoichiometry:
+        if "time" in sto:
+            raise Exception("error, 'time' can't be in stoichiometry")
+
         self.max_duration = max_duration
         self.total_steps = total_steps
         self.events = list()
