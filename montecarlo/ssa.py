@@ -75,11 +75,13 @@ class SSAModel(dict):
         initial_conditions,
         propensities,
         stoichiometry,
+        total_steps=None
         max_duration=None
     ):
         """Initialize model"""
         super().__init__(**initial_conditions)
         self.max_duration = max_duration
+        self.total_steps = total_steps
         self.events = list()
         self.excluded_events = list()
         for event, propensity in propensities.items():
@@ -98,6 +100,9 @@ class SSAModel(dict):
         """Return True to break out of trajectory"""
         if self.max_duration is not None:
             if self["time"][-1] >= self.max_duration:
+                return True
+        if self.total_steps is not None:
+            if len(self["time"]) == self.total_steps: 
                 return True
         if len(self.events) == 0:
             return True
