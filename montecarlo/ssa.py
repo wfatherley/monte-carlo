@@ -85,7 +85,7 @@ class SSAModel(dict):
             if "time" in sto:
                 raise Exception("error, 'time' can't be in stoichiometry.")
         if (total_steps == None) and (max_duration == None) and (till_end == True):
-            raise Exception("error, the simulation might run forever. please input upper boundary."
+            raise Exception("error, the simulation might run forever. please input upper boundary.")
         self.max_duration = max_duration
         self.total_steps = total_steps
         self.till_end = till_end
