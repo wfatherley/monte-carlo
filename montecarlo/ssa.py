@@ -75,7 +75,7 @@ class SSAModel(dict):
         initial_conditions,
         propensities,
         stoichiometry,
-        total_steps=None
+        total_steps=None,
         max_duration=None
     ):
         """Initialize model"""
