@@ -80,7 +80,7 @@ class SSAModel(dict):
     ):
         """Initialize model"""
         super().__init__(**initial_conditions)
-        for sto in stoichiometry:
+        for sto in stoichiometry.values():
             if "time" in sto:
                 raise Exception("error, 'time' can't be in stoichiometry")
         self.max_duration = max_duration
