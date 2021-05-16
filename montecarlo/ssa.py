@@ -75,16 +75,20 @@ class SSAModel(dict):
         initial_conditions,
         propensities,
         stoichiometry,
-        total_steps=None
-        max_duration=None
+        total_steps=None,
+        max_duration=None,
+        till_end=False
     ):
         """Initialize model"""
         super().__init__(**initial_conditions)
         for sto in stoichiometry:
             if "time" in sto:
-                raise Exception("error, 'time' can't be in stoichiometry")
+                raise Exception("error, 'time' can't be in stoichiometry.")
+        if (total_steps == None) and (max_duration == None) and (till_end == True):
+            raise Exception("error, the simulation might run forever. please input upper boundary."
         self.max_duration = max_duration
         self.total_steps = total_steps
+        self.till_end = till_end
         self.events = list()
         self.excluded_events = list()
         for event, propensity in propensities.items():
@@ -107,8 +111,9 @@ class SSAModel(dict):
         if self.total_steps is not None:
             if len(self["time"]) == self.total_steps: 
                 return True
-        if len(self.events) == 0:
-            return True
+        if self.till_end is False:
+            if len(self.events) == 0:
+                return True
         else:
             return False
 
