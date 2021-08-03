@@ -4,30 +4,30 @@ from math import inf, log
 from random import random, seed
 from time import perf_counter
 
-from . import config_seed
+from .util import default_seed
 
 
 __all__ = [
-    "Base",
-    "Direct",
-    "FirstFamily",
-    "FirstReaction",
-    "NextReaction",
-    "TauLeap",
+    "BaseSSA",
+    "DirectSSA",
+    "FirstFamilySSA",
+    "FirstReactionSSA",
+    "NextReactionSSA",
+    "TauLeapSSA",
 ]
 
 
 LOGGER = getLogger(__name__)
 
 
-class Base:
+class BaseSSA:
     """base SSA"""
     
     def __init__(self, model, **kwargs):
         """construct self"""
         self.model = model
         self.trajectories = kwargs.get("trajectories", inf)
-        seed(a=kwargs.get("seed", config_seed))
+        seed(a=kwargs.get("seed", default_seed))
 
     def __iter__(self):
         """iterator protocol support"""
@@ -51,7 +51,7 @@ class Base:
         raise NotImplemented
 
 
-class Direct(Base):
+class DirectSSA(BaseSSA):
     """direct-method SSA"""
     
     def method(self):
@@ -81,7 +81,7 @@ class Direct(Base):
             self.model.update(event)
 
 
-class FirstFamily(Base):
+class FirstFamilySSA(BaseSSA):
     """first-family SSA"""
     
     def method(self):
@@ -91,7 +91,7 @@ class FirstFamily(Base):
         )
 
 
-class FirstReaction(Base):
+class FirstReactionSSA(BaseSSA):
     """first-reaction SSA"""
     
     def method(self):
@@ -115,7 +115,7 @@ class FirstReaction(Base):
             self.model.update(event)
 
 
-class NextReaction(Base):
+class NextReactionSSA(BaseSSA):
     """next-reaction SSA"""
 
     def method(self):
@@ -125,7 +125,7 @@ class NextReaction(Base):
         )
 
 
-class TauLeap(Base):
+class TauLeapSSA(BaseSSA):
     """tau-leap SSA"""
 
     def method(self):

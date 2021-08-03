@@ -5,13 +5,13 @@ from logging import getLogger
 from math import inf
 from re import compile, ASCII
 
-from . import zero_propensity, GillespyException
+from .util import zero_propensity, GillespyException
 
 
 LOGGER = getLogger(__name__)
 
 
-class Base(dict):
+class BaseModel(dict):
     """base SSA model"""
 
     def equilibriated(self):
@@ -19,15 +19,15 @@ class Base(dict):
         raise NotImplemented
 
     def loader(self, obj, data, serializer):
-        """load/s model JSON object"""
+        """load/s model obj"""
         raise NotImplemented
 
     def load(self, obj, fp):
-        """load model JSON object from file pointer"""
+        """load model obj from file pointer"""
         self.loader(obj, fp, json_ld)
 
     def loads(self, obj, value):
-        """load model JSON object on from string"""
+        """load model obj on from string"""
         self.loader(obj, fp, json_lds)
 
     def update(self, event):
@@ -35,7 +35,7 @@ class Base(dict):
         raise NotImplemented
         
 
-class Model(Base):
+class Model(BaseModel):
     """model for Gillespian SSAs"""
 
     invalid_events = dict()
@@ -175,11 +175,9 @@ class Model(Base):
                     )
 
 
-class EfficientEvents:
-    """model events for Gibsonian SSAs"""
-    pass
-
-
-class EfficientModel:
+class EfficientModel(BaseModel):
     """model for Gibsonian SSAs"""
     pass
+
+
+__all__ = ["BaseModel", "Model", "EfficientModel"]
