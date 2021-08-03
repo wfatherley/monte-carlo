@@ -83,14 +83,54 @@ class DirectSSA(BaseSSA):
 
 class FirstFamilySSA(BaseSSA):
     """first-family SSA"""
+
+    def __init__(self, model, **kwargs):
+        """construct self"""
+        super().__init__(model, **kwargs)
+        self.family_count = kwargs.get("family_count", 2)
     
     def method(self):
         """implementation"""
         LOGGER.info(
             "begin 1st family: trajectories=%i", self.trajectories
         )
+        while not self.model.equilibraited():
+            families = list()
+            family_size = len(events) // family_count
+            for i in range(self.family_count):
+                j = i * family_size
+                family = [
+                    (event, stoic, prope(self.model))
+                    for (event, stoic, prope)
+                    in self.model.events[j:j + family_size]
+                ]
+                if len(
+                    self.model.events[j + family_size:]
+                ) < family_size:
+                    family += self.model.events[j + family_size:]
+                families.append(
+                    (
+                        log(1.0 / random()) / sum(
+                            f[-1] for f in family
+                        ),
+                        family
+                    )
+                )
+                family = min(families)
+                self.model["time"].append(
+                    self.model["time"][-1] + family[0]
+                )
+                partition = sum(f[-1] for f in family[-1]) * random()
+                while partition >= 0.0:
+                    event, stoic, prope = weights.pop()
+                    partition -= propen
+                for species, delta in stoic.items():
+                    self.model[species].append(
+                        self.model[species][-1] + delta
+                    )
+                self.model.update(event)
 
-
+                
 class FirstReactionSSA(BaseSSA):
     """first-reaction SSA"""
     
