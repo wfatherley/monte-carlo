@@ -4,7 +4,7 @@ from math import inf, log
 from random import random, seed
 from time import perf_counter
 
-from . import config_seed, GillespieException
+from . import config_seed
 
 
 __all__ = [
@@ -31,6 +31,7 @@ class Base:
 
     def __iter__(self):
         """iterator protocol support"""
+        LOGGER.info("returning SSA iterator")
         return self
 
     def __next__(self):
@@ -55,10 +56,13 @@ class Direct(Base):
     
     def method(self):
         """implementation"""
+        LOGGER.info(
+            "begin direct: trajectories=%i", self.trajectories
+        )
         while not self.model.equilibraited():
             weights = [
-                (eve, sto, pro(self.model))
-                for (eve, sto, pro)
+                (event, stoic, prope(self.model))
+                for (event, stoic, prope)
                 in self.model.events
             ]
             partition = sum(w[-1] for w in weights)
@@ -68,13 +72,13 @@ class Direct(Base):
             )
             partition = partition * random()
             while partition >= 0.0:
-                rxn, sto, pro = weights.pop()
-                partition -= pro
-            for species, delta in sto.items():
+                event, stoic, prope = weights.pop()
+                partition -= propen
+            for species, delta in stoic.items():
                 self.model[species].append(
                     self.model[species][-1] + delta
                 )
-        return self.model
+            self.model.update(event)
 
 
 class FirstFamily(Base):
@@ -82,7 +86,9 @@ class FirstFamily(Base):
     
     def method(self):
         """implementation"""
-        pass
+        LOGGER.info(
+            "begin 1st family: trajectories=%i", self.trajectories
+        )
 
 
 class FirstReaction(Base):
@@ -90,9 +96,9 @@ class FirstReaction(Base):
     
     def method(self):
         """implementation"""
-        for key in self.model:
-            del self.model[key][1:]
-        start = perf_counter()
+        LOGGER.info(
+            "begin 1st rxn: trajectories=%i", self.trajectories
+        )
         while not self.model.equilibraited():
             times = [
                 (log(1.0 / random()) / pro(self.model), sto)
@@ -106,15 +112,24 @@ class FirstReaction(Base):
                 self.model[species].append(
                     self.model[species][-1] + delta
                 )
-        self.model.perf_time = perf_counter() - start
-        return self.model
+            self.model.update(event)
 
 
 class NextReaction(Base):
     """next-reaction SSA"""
-    pass
+
+    def method(self):
+        """implementation"""
+        LOGGER.info(
+            "begin next rxn: trajectories=%i", self.trajectories
+        )
 
 
 class TauLeap(Base):
     """tau-leap SSA"""
-    pass
+
+    def method(self):
+        """implementation"""
+        LOGGER.info(
+            "begin tau leap: trajectories=%i", self.trajectories
+        )
