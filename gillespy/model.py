@@ -3,9 +3,13 @@ from io import IOBase
 from json import load as json_ld, loads as json_lds
 from logging import getLogger
 from math import inf
+from queue import PriorityQueue
 from re import compile, ASCII
 
 from .util import zero_propensity, GillespyException
+
+
+__all__ = ["BaseModel", "Model", "EfficientModel"]
 
 
 LOGGER = getLogger(__name__)
@@ -13,6 +17,8 @@ LOGGER = getLogger(__name__)
 
 class BaseModel(dict):
     """base SSA model"""
+
+    propensity, state, stoichiometry = None, None, None
 
     def equilibriated(self):
         """return True if simulation over else False"""
@@ -175,9 +181,25 @@ class Model(BaseModel):
                     )
 
 
-class EfficientModel(BaseModel):
+class EfficientModel(Model):
     """model for Gibsonian SSAs"""
-    pass
+    
+    invalid_events = None
+    sojourn_tree = PriorityQueue()
 
+    @property
+    def events(self):
+        """return list of possible events"""
+        pass
 
-__all__ = ["BaseModel", "Model", "EfficientModel"]
+    def equilibriated(self):
+        """return True if simulation over else False"""
+        pass
+
+    def loader(self, obj, data, serializer):
+        """load/s model JSON object"""
+        pass
+
+    def update(self, event):
+        """update model, given event"""
+        pass

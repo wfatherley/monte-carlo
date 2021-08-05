@@ -7,10 +7,10 @@ WIP
 ## Usage
 To perform stochastic simulations, `gillespy` exposes varieties of two Python objects,
 
- - __model__ classes for storing an managing initial and final simulation data;
- - and iterable __SSA__ classes containing the simulation algorithm.
+ - __model__ classes for storing and managing initial and final simulation data;
+ - and iterable __SSA__ classes containing the actual simulation algorithm logic.
 
-The basic flow is to instantiate one of the model classes, instantiate one of the SSA classes by passing it the model instance, and either use the SSA instance as the iterable in a for-loop or in some other control flow structure.
+The basic flow is to instantiate one of the model classes, instantiate one of the SSA classes by passing it the model instance, and gather simulations (also called _trajectories_) from the SSA instance in a for-loop or in some other control flow structure.
 
 Instantiating a model requires passing it three JSON objects, including a __state__ object,
 

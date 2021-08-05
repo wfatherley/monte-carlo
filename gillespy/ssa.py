@@ -4,7 +4,8 @@ from math import inf, log
 from random import random, seed
 from time import perf_counter
 
-from .util import default_seed
+from .model import BaseModel
+from .util import default_seed, GillespyException
 
 
 __all__ = [
@@ -25,6 +26,11 @@ class BaseSSA:
     
     def __init__(self, model, **kwargs):
         """construct self"""
+        if not isinstance(model, BaseModel):
+            raise GillespyException("bad model")
+        if not all(
+            (model.propensity, model.state, model.stoichiometry)
+        ): raise GillespyException("bad model")
         self.model = model
         self.trajectories = kwargs.get("trajectories", inf)
         seed(a=kwargs.get("seed", default_seed))
@@ -57,7 +63,7 @@ class DirectSSA(BaseSSA):
     def method(self):
         """implementation"""
         LOGGER.info(
-            "begin direct: trajectories=%i", self.trajectories
+            "begin direct: trajectories=%f", self.trajectories
         )
         while not self.model.equilibraited():
             weights = [
@@ -92,7 +98,7 @@ class FirstFamilySSA(BaseSSA):
     def method(self):
         """implementation"""
         LOGGER.info(
-            "begin 1st family: trajectories=%i", self.trajectories
+            "begin 1st family: trajectories=%f", self.trajectories
         )
         while not self.model.equilibraited():
             families = list()
@@ -130,14 +136,14 @@ class FirstFamilySSA(BaseSSA):
                     )
                 self.model.update(event)
 
-                
+
 class FirstReactionSSA(BaseSSA):
     """first-reaction SSA"""
     
     def method(self):
         """implementation"""
         LOGGER.info(
-            "begin 1st rxn: trajectories=%i", self.trajectories
+            "begin 1st rxn: trajectories=%f", self.trajectories
         )
         while not self.model.equilibraited():
             times = [
@@ -161,9 +167,23 @@ class NextReactionSSA(BaseSSA):
     def method(self):
         """implementation"""
         LOGGER.info(
-            "begin next rxn: trajectories=%i", self.trajectories
+            "begin next rxn: trajectories=%f", self.trajectories
         )
-
+        for event, stoic, prope in self.model.events:
+            prope = prope(self.model)
+            sojourn = log(1.0 / random()) / prope
+            self.model.sojourn_tree.put((sojourn, event, stoic))
+        while not self.model.equilibraited():
+            sojourn, event, stoic = self.model.sojourn_tree.get()
+            self.model["time"].append(
+                self.model["time"][-1] + sojourn
+            )
+            for species, delta in stoic.items():
+                self.model[species].append(
+                    self.model[species][-1] + delta
+                )
+            self.model.update(event)
+            
 
 class TauLeapSSA(BaseSSA):
     """tau-leap SSA"""
