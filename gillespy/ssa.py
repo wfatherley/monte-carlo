@@ -134,7 +134,7 @@ class FirstFamilySSA(BaseSSA):
                     self.model[species].append(
                         self.model[species][-1] + delta
                     )
-                self.model.update(event)
+            self.model.update(event)
 
 
 class FirstReactionSSA(BaseSSA):

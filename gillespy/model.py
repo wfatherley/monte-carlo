@@ -198,7 +198,7 @@ class EfficientModel(Model):
 
     def loader(self, obj, data, serializer):
         """load/s model JSON object"""
-        pass
+        #super().loader(obj, data, serializer)
 
     def update(self, event):
         """update model, given event"""
