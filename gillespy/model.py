@@ -5,6 +5,8 @@ from logging import getLogger
 from math import inf
 from queue import PriorityQueue
 from re import compile, ASCII
+from secrets import choice
+from string import ascii_letters, digits
 
 from .util import zero_propensity, GillespyException
 
@@ -12,41 +14,85 @@ from .util import zero_propensity, GillespyException
 __all__ = ["BaseModel", "Model", "EfficientModel"]
 
 
-LOGGER = getLogger(__name__)
+logger = getLogger(__name__)
 
 
-class BaseModel(dict):
-    """base SSA model"""
+species_re = compile(r"(^[a-zA-Z]{1}\w{,31})", flags=ASCII)
 
-    propensity, state, stoichiometry = None, None, None
 
-    def equilibriated(self):
-        """return True if simulation over else False"""
-        raise NotImplemented
+def process_data(data):
+    """return processed propensity object"""
+    dep_graph = dict()
+    for k,v in data.items():
+        dep_graph[k] = [
+            s.group(0) for s
+            in species_re.findall()
+        ]
+        data[k] = eval(
+            "lambda d: " + species_re.sub(
+                lambda mo: "d['" + mo.group(0) + "']",
+                v,
+                flags=ASCII
+            )
+        )
+    for event, event_species in dep_graph.items():
+        event_deps = list()
+        for other_event in dep_graph.keys():
+            if set(v).isdisjoint(
+                set(dep_graph[other_event])
+            ):
+                continue
+            event_deps.append(other_event)
+        dep_graph[event] = event_deps
+    return data
 
-    def loader(self, obj, data, serializer):
-        """load/s model obj"""
-        raise NotImplemented
 
-    def load(self, obj, fp):
-        """load model obj from file pointer"""
-        self.loader(obj, fp, json_ld)
+class Propensity:
+    """immutable propensity descriptor"""
 
-    def loads(self, obj, value):
-        """load model obj on from string"""
-        self.loader(obj, fp, json_lds)
+    def __delete__(self, obj):
+        """delete propensities"""
+        pass
 
-    def update(self, event):
-        """update events, given event"""
-        raise NotImplemented
-        
+    def __get__(self, obj, obj_owner=None):
+        """return propensities"""
+        pass
 
-class Model(BaseModel):
-    """model for Gillespian SSAs"""
+    def __set__(self, obj, value):
+        """set propensities"""
+        pass
 
-    invalid_events = dict()
-    species_re = compile(r"(^[a-zA-Z]{1}\w{,19})", flags=ASCII)
+    def __set_name__(self, obj_owner, name):
+        """remember attribute name"""
+        pass
 
+
+class Stoichiometry:
+    """immutable stoichiometry descriptor"""
+
+    def __delete__(self, obj):
+        """delete stoichiometries"""
+        pass
+
+    def __get__(self, obj, obj_owner=None):
+        """return stoichiometries"""
+        pass
+
+    def __set__(self, obj, value):
+        """set stoichiometries"""
+        pass
+
+    def __set_name__(self, obj_owner, name):
+        """remember attribute name"""
+        pass
+
+
+class Model(dict):
+    """model container for Gillespian SSAs"""
+
+    propensity = Propensity()
+    stoichiometry = Stoichiometry()
+    
     def __getitem__(self, key):
         """get series data"""
         if key in self:
@@ -60,125 +106,70 @@ class Model(BaseModel):
 
     def __init__(self, **kwargs):
         """construct self"""
+        self.id = "".join(
+            choice(ascii_letters + digits) for _ in range(32)
+        )
         super().__init__()
-        for k,v in {
-            "state": kwargs.get("state"),
-            "propensity": kwargs.get("propensity"),
-            "stoichiometry": kwargs.get("stoichiometry")
-        }.items():
-            if isinstance(v, dict):
-                self.loader(k, v, lambda d: d)
-            elif isinstance(v, str):
-                self.loader(k, v, json_lds)
-            elif isinstance(v, IOBase):
-                self.loader(k, v, json_ld)
-        self.max_duration = kwargs.get("max_duration", inf)
-        self.max_steps = kwargs.get("max_steps", inf)
+        if "propensity" in kwargs:
+            self.propensity = kwargs.pop("propensity")
+        if "stoichiometry" in kwargs:
+            self.stoichiometry = kwargs.pop("stoichiometry")
+        if "max_duration" in kwargs:
+            self.max_duration = kwargs.pop("max_duration")
+        else:
+            self.max_duration = inf
+        if "max_steps" in kwargs:
+            self.max_steps = kwargs.pop("max_steps")
+        else:
+            self.max_steps = inf
+        if "state" in kwargs:
+            self.loader("state", kwargs.pop("state"))
+        for k,v in kwargs.items():
+            self[k] = v
 
-    @property
-    def events(self):
-        """return list of possible events"""
-        return [
-            (eve, pro, sto) for (eve, pro, sto)
-            in zip(
-                self.propensity.keys(),
-                self.propensity.values(),
-                self.stoichiometry.values()            
-            )
-        ]
+    def __setitem__(self, key, value):
+        """vaildate and return state object"""
+        if not isinstance(value, list):
+            raise GillespieException("invalid state")
+        if len(value) < 1:
+            raise GillespieException("invalid state")
+        if not isinstance(value[-1], (int, complex, float)):
+            raise GillespieException("invalid state")
+        if not species_re.fullmatch(k):
+            raise GillespieException("invalid state")
+        super().__setitem(key, value)
 
     def equilibriated(self):
         """return True if simulation over else False"""
         if self["time"] >= self.max_duration:
-            LOGGER.info("exit on max duration")
+            logger.info("exit on max duration: model_id=%i", self.id)
             return True
         elif len(self["time"]) >= self.max_steps:
-            LOGGER.info("exit on max steps")
+            logger.info("exit on max steps: model_id=%i", self.id)
             return True
         elif len(self.events) == 0:
-            LOGGER.info("exit on zero cumulative propensity")
+            logger.info(
+                "exit on zero cumulative propensity: model_id=%i",
+                self.id
+            )
             return True
         return False
 
-    def loader(self, obj, data, serializer):
-        """load/s model JSON object"""
-        if obj == "propensity":
-            def process_data(data):
-                """return processed propensity object"""
-                dep_graph = dict()
-                for k,v in data.items():
-                    dep_graph[k] = [
-                        s.group(0) for s
-                        in self.species_re.findall()
-                    ]
-                    data[k] = eval(
-                        "lambda d: " + self.species_re.sub(
-                            lambda mo: "d['" + mo.group(0) + "']",
-                            v,
-                            flags=ASCII
-                        )
-                    )
-                for event, event_species in dep_graph.items():
-                    event_deps = list()
-                    for other_event in dep_graph.keys():
-                        if set(v).isdisjoint(
-                            set(dep_graph[other_event])
-                        ):
-                            continue
-                        event_deps.append(other_event)
-                    dep_graph[event] = event_deps
-                self.dep_graph = dep_graph
-                return data
-            setattr(
-                self, obj, serializer(data, object_hook=process_data)
-            )
-        elif obj == "state":
-            def process_data(data):
-                """return processed state object"""
-                for v in data.values():
-                    if not isinstance(v, list):
-                        raise GillespieException(
-                            "state values must be lists"
-                        )
-                    if len(v) < 1:
-                        raise GillespieException(
-                            "state must have initial conditions"
-                        )
-                if "time" not in data:
-                    raise GillespieException(
-                        "state must have a time parameter"
-                    )
-                return data
-            for k,v in serializer(
-                data, object_hook=process_data
-            ).items():
+    def loader(self, obj, data)
+        """load/s model object data"""
+        if obj == "state":
+            if isinstance(state, str):
+                state = json_lds(state)
+            elif isinstance(state, IOBase):
+                state = json_ld(state)
+            if not isinstance(state, dict):
+                raise GillespyException("invalid state")
+            for k,v in state.items():
                 self[k] = v
-        elif obj == "stoichiometry":
-            process_data = lambda data: data
-            setattr(
-                self, obj, serializer(data, object_hook=process_data)
-            )
+        elif obj in {"propensity", "stoichiometry"}:
+            setattr(self, obj, data)
         else:
-            LOGGER.exception("bad JSON object: obj=%s", obj)
-            raise GillespyException("unknown JSON object")
-        LOGGER.info("validated and loaded: object=%s", obj)
-
-    def update(self, event):
-        """update model, given event"""
-        for dep_event in self.dep_graph[event]:
-            try:
-                propen = self.propensity[dep_event]
-            except KeyError:
-                propen, stoich = self.invalid_events[dep_event]
-                if propen(self) > zero_propensity:
-                    self.propensity[dep_event] = propen
-                    self.stoichiometry[dep_event] = stoich
-            else:
-                if propen(self) <= zero_propensity:
-                    self.invalid_events[dep_event] = (
-                        self.propensity.pop(dep_event),
-                        self.stoichiometry.pop(dep_event)
-                    )
+            raise GillespyException("bad object")
 
 
 class EfficientModel(Model):

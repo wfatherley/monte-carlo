@@ -26,7 +26,7 @@ class BaseSSA:
     
     def __init__(self, model, **kwargs):
         """construct self"""
-        if not isinstance(model, BaseModel):
+        if not isinstance(model, Model):
             raise GillespyException("bad model")
         if not all(
             (model.propensity, model.state, model.stoichiometry)
@@ -48,7 +48,8 @@ class BaseSSA:
             self.trajectories -= 1
             start = perf_counter()
             self.method()
-            self.model.perf_time = perf_counter() - start
+            stop = perf_counter()
+            self.model.perf_time = stop - start
             return self.model
         raise StopIteration
 
@@ -65,7 +66,7 @@ class DirectSSA(BaseSSA):
         LOGGER.info(
             "begin direct: trajectories=%f", self.trajectories
         )
-        while not self.model.equilibraited():
+        while not self.model.equilibriated():
             weights = [
                 (event, stoic, prope(self.model))
                 for (event, stoic, prope)
@@ -100,7 +101,7 @@ class FirstFamilySSA(BaseSSA):
         LOGGER.info(
             "begin 1st family: trajectories=%f", self.trajectories
         )
-        while not self.model.equilibraited():
+        while not self.model.equilibriated():
             families = list()
             family_size = len(events) // family_count
             for i in range(self.family_count):
@@ -145,7 +146,7 @@ class FirstReactionSSA(BaseSSA):
         LOGGER.info(
             "begin 1st rxn: trajectories=%f", self.trajectories
         )
-        while not self.model.equilibraited():
+        while not self.model.equilibriated():
             times = [
                 (log(1.0 / random()) / pro(self.model), sto)
                 for (rxn, sto, pro) in self.model.events
@@ -173,7 +174,7 @@ class NextReactionSSA(BaseSSA):
             prope = prope(self.model)
             sojourn = log(1.0 / random()) / prope
             self.model.sojourn_tree.put((sojourn, event, stoic))
-        while not self.model.equilibraited():
+        while not self.model.equilibriated():
             sojourn, event, stoic = self.model.sojourn_tree.get()
             self.model["time"].append(
                 self.model["time"][-1] + sojourn

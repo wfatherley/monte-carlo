@@ -7,10 +7,10 @@ WIP
 ## Usage
 To perform stochastic simulations, `gillespy` exposes varieties of two Python objects,
 
- - __model__ classes for storing and managing initial and final simulation data;
- - and iterable __SSA__ classes containing the actual simulation algorithm logic.
+ - __model__ classes that store and manage simulation data;
+ - and iterable __SSA__ classes that contain the actual simulation algorithm logic.
 
-The basic flow is to instantiate one of the model classes, instantiate one of the SSA classes by passing it the model instance, and gather simulations (also called _trajectories_) from the SSA instance in a for-loop or in some other control flow structure.
+The basic flow is to instantiate one of the model classes, pass it to the `SSA` constructor, and gather simulations (also called _trajectories_) from the SSA instance in a for-loop or in some other control flow pattern.
 
 Instantiating a model requires passing it three JSON objects, including a __state__ object,
 
@@ -22,12 +22,12 @@ Instantiating a model requires passing it three JSON objects, including a __stat
 }
 ```
 
-whereby each entity is an array with a single value representing that entitys initial condition. The `species_a` entity above can be interpreted as _the initial population of species A is 4._ Although its initial condition can be any numerical value, the state object must always have a `time` entity.
+in which each entity is an array with a single value representing that entitys initial condition. The `species_a` entity above can be interpreted as _the initial population of species A is 4._ State objects must always have a `time` entity, but the initial value in its array can be any built-in numerical value.
 
-In addition to passing in these arrays of initial conditions via the `state` object, there are the __propensity__ and __stoichiometry__ objects, which specify entities that define _elementary events_ that can happen at each step within the simulation. Suppose the process that is to be simulated with the state object above is the composition of only two elementary events--
+In addition to the `state` object, there are the __propensity__ and __stoichiometry__ objects, which together completely specify the _elementary events_ that can happen at each step within a given simulation. Suppose the process to be simulated with the state object above is the composition of only two elementary events--
 
  - one of species A transitions to being a B species,
- - and vice versa.
+ - and one of species B transitions to being an A species.
 
 Then the propensity object
 
@@ -38,7 +38,9 @@ Then the propensity object
 }
 ```
 
-defines propensity expressions for each of the two possible elementary events. Each propensity expression represents the instructions need to compute the frequency/likelihood of that event, which is required by the SSA object to perform the simulation. During each iteration of a given simulation, the arrays in the state object are updated when the SSA selects an elementary event based on their propensities, and this update occurs via a stoichiometry object that specifies exactly how to update populations--
+defines propensity expressions for each of the two possible elementary events. Each propensity expression represents the instructions need to compute the frequency/likelihood of that event, which is required by the SSA object to perform the simulation.
+
+During each iteration of a given simulation, the arrays in the state object are updated when the SSA selects an elementary event based on their propensities, and this update occurs via a stoichiometry object that specifies exactly how to update populations--
 
 ```json
 {
@@ -47,7 +49,7 @@ defines propensity expressions for each of the two possible elementary events. E
 }
 ```
 
-There are several ways to pass these three objects to a model class, which are shown below with `gillespy.Model`.
+These JSON objects collectively specify a model in which a conserved quanity of particles/atoms/elements/... transiton between states A and B, and they can be passed to `Model` in several different ways:
 
 ```python
 from json import import loads
@@ -57,11 +59,11 @@ import gillespy
 
 # read in the JSON files
 with (
-    open("my_state.json", "r")) as state,
+    open("my_state.json", "r") as state,
     open("my_propensity.json", "r") as prope,
     open("my_stoichiometry.json", "r") as stoic
 ):
-    # pass in file pointers
+    # pass in file pointers containing JSON data
     my_model = gillespy.Model(
         state=state, propensity=prope, stoichometry=stoic
     )
@@ -70,22 +72,23 @@ with (
         state.read(), prope.read(), stoic.read()
     )
 
-    # or pass strings
+    # or pass in serialized JSON string
     my_duplicate_model = gillespy.Model(
         state=state, propensity=prope, stoichometry=stoic
     )
 
-    # or pass serialized objects
+    # or pass deserialized JSON objects
     my_doubly_duplicate_model = gillespy.Model(
         state=loads(state),
         propensity=loads(prope),
         stoichometry=loads(stoic)
     )
 
-    # or instantiate the model without the objects
+    # models can be instantiated without parameters
     another_duplicate_model = gillespy.Model()
 
-    # and read the strings (or file pointers via `Model.load`) in later
+    # to populate, use `loads` for strings
+    # or `load` for file objects
     another_duplicate_model.loads("state", state)
     another_duplicate_model.loads("propensity", prope)
     another_duplicate_model.loads("stoichiometry", stoic)
@@ -93,7 +96,7 @@ with (
 
 See the documentation for more information on selecting and instantiating models.
 
-With an instantiated model, an __SSA__ class can be instantaited, which is an iterator that returns some number of complete simulations, also known as __trajectories__.
+With a model instance, an __SSA__ object can be instantaited, which is an iterator that returns some number of complete simulations, also known as __trajectories__.
 
 ```python
 # pass model to an SSA class
