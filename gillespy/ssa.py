@@ -1,43 +1,36 @@
-"""stochastic simulation algorithm (SSA)"""
+"""stochastic simulation algorithm objects"""
 from logging import getLogger
 from math import inf, log
 from random import random, seed
 from time import perf_counter
 
-from .model import BaseModel
-from .util import default_seed, GillespyException
+from .util import default_seed
 
 
-__all__ = [
-    "BaseSSA",
-    "DirectSSA",
-    "FirstFamilySSA",
-    "FirstReactionSSA",
-    "NextReactionSSA",
-    "TauLeapSSA",
-]
+logger = getLogger(__name__)
 
 
-LOGGER = getLogger(__name__)
-
-
-class BaseSSA:
-    """base SSA"""
+class Base:
+    """base stochastic simulation algorithm"""
     
     def __init__(self, model, **kwargs):
         """construct self"""
-        if not isinstance(model, Model):
-            raise GillespyException("bad model")
-        if not all(
-            (model.propensity, model.state, model.stoichiometry)
-        ): raise GillespyException("bad model")
         self.model = model
         self.trajectories = kwargs.get("trajectories", inf)
-        seed(a=kwargs.get("seed", default_seed))
+        self.seed = kwargs.get("seed", default_seed)
+        seed(a=self.seed)
+        logger.info(
+            "seed set: model_id=%s, seed_value=%s",
+            model.id,
+            str(seed)
+        )
 
     def __iter__(self):
         """iterator protocol support"""
-        LOGGER.info("returning SSA iterator")
+        logger.info(
+            "returning simulation iterator: model_id=%s",
+            self.model.id
+        )
         return self
 
     def __next__(self):
@@ -48,8 +41,11 @@ class BaseSSA:
             self.trajectories -= 1
             start = perf_counter()
             self.method()
-            stop = perf_counter()
-            self.model.perf_time = stop - start
+            logger.info(
+                "simulation complete: model_id=%s, perf_time=%i",
+                model.id,
+                perf_counter() - start
+            )
             return self.model
         raise StopIteration
 
@@ -58,19 +54,16 @@ class BaseSSA:
         raise NotImplemented
 
 
-class DirectSSA(BaseSSA):
-    """direct-method SSA"""
+class Direct(Base):
+    """direct-method stochastic simulation algorithm"""
     
     def method(self):
         """implementation"""
-        LOGGER.info(
-            "begin direct: trajectories=%f", self.trajectories
-        )
         while not self.model.equilibriated():
             weights = [
                 (event, stoic, prope(self.model))
                 for (event, stoic, prope)
-                in self.model.events
+                in self.model["valid_events"]
             ]
             partition = sum(w[-1] for w in weights)
             sojourn = log(1.0 / random()) / partition
@@ -88,8 +81,8 @@ class DirectSSA(BaseSSA):
             self.model.update(event)
 
 
-class FirstFamilySSA(BaseSSA):
-    """first-family SSA"""
+class FirstFamily(Base):
+    """first-family stochastic simulation algorithm"""
 
     def __init__(self, model, **kwargs):
         """construct self"""
@@ -98,23 +91,24 @@ class FirstFamilySSA(BaseSSA):
     
     def method(self):
         """implementation"""
-        LOGGER.info(
-            "begin 1st family: trajectories=%f", self.trajectories
-        )
         while not self.model.equilibriated():
             families = list()
-            family_size = len(events) // family_count
+            family_size = len(
+                self.model["valid_events"]
+            ) // family_count
             for i in range(self.family_count):
                 j = i * family_size
                 family = [
                     (event, stoic, prope(self.model))
                     for (event, stoic, prope)
-                    in self.model.events[j:j + family_size]
+                    in self.model["valid_events"][j:j + family_size]
                 ]
                 if len(
-                    self.model.events[j + family_size:]
+                    self.model["valid_events"][j + family_size:]
                 ) < family_size:
-                    family += self.model.events[j + family_size:]
+                    family += self.model[
+                        "valid_events"
+                    ][j + family_size:]
                 families.append(
                     (
                         log(1.0 / random()) / sum(
@@ -138,18 +132,15 @@ class FirstFamilySSA(BaseSSA):
             self.model.update(event)
 
 
-class FirstReactionSSA(BaseSSA):
-    """first-reaction SSA"""
+class FirstReaction(Base):
+    """first-reaction stochastic simulation algorithm"""
     
     def method(self):
         """implementation"""
-        LOGGER.info(
-            "begin 1st rxn: trajectories=%f", self.trajectories
-        )
         while not self.model.equilibriated():
             times = [
                 (log(1.0 / random()) / pro(self.model), sto)
-                for (rxn, sto, pro) in self.model.events
+                for (eve, sto, pro) in self.model["valid_events"]
             ]
             times.sort()
             self.model["time"].append(
@@ -160,37 +151,3 @@ class FirstReactionSSA(BaseSSA):
                     self.model[species][-1] + delta
                 )
             self.model.update(event)
-
-
-class NextReactionSSA(BaseSSA):
-    """next-reaction SSA"""
-
-    def method(self):
-        """implementation"""
-        LOGGER.info(
-            "begin next rxn: trajectories=%f", self.trajectories
-        )
-        for event, stoic, prope in self.model.events:
-            prope = prope(self.model)
-            sojourn = log(1.0 / random()) / prope
-            self.model.sojourn_tree.put((sojourn, event, stoic))
-        while not self.model.equilibriated():
-            sojourn, event, stoic = self.model.sojourn_tree.get()
-            self.model["time"].append(
-                self.model["time"][-1] + sojourn
-            )
-            for species, delta in stoic.items():
-                self.model[species].append(
-                    self.model[species][-1] + delta
-                )
-            self.model.update(event)
-            
-
-class TauLeapSSA(BaseSSA):
-    """tau-leap SSA"""
-
-    def method(self):
-        """implementation"""
-        LOGGER.info(
-            "begin tau leap: trajectories=%i", self.trajectories
-        )
