@@ -1,13 +1,10 @@
 """model and associated objects"""
-from datetime import datetime, timezone
 from logging import getLogger, ERROR
 from math import inf
 from secrets import choice
 from string import ascii_letters, digits
 
-from .util import (
-    default_seed, species_re, zero_propensity, GillespyException
-)
+from .util import species_re, zero_propensity, GillespyException
 
 
 __all__ = ["Model",]
@@ -50,10 +47,6 @@ class Model(dict):
         self.equilibrium_hooks.extend(
             kwargs.pop("equilibrium_hooks", [])
         )
-        self.seed = (
-            kwargs.pop("seed", None)
-            or int(datetime.now(timezone.utc).timestamp())
-        )
         propensity = kwargs.pop("propensity", {})
         stoichiometry = kwargs.pop("stoichiometry", {})
         kwargs.update(kwargs.pop("state", {}))
@@ -61,32 +54,8 @@ class Model(dict):
         self.build_events(
             propensity=propensity, stoichiometry=stoichiometry
         )
-
-    def __setitem__(self, key, value):
-        """vaildate and set `key` state entity"""
-        raise Exception
-        if not isinstance(value, list):
-            logger.error(
-                "state values must be lists: model_id=%s", self.id
-            )
-            raise GillespieException("invalid state object")
-        if len(value) < 1:
-            logger.error(
-                "state value list must not be empty: model_id=%s",
-                self.id
-            )
-            raise GillespieException("invalid state object")
-        if not isinstance(value[-1], (int, complex, float)):
-            logger.error(
-                "non-numeric state value entry: model_id=%s", self.id
-            )
-            raise GillespieException("invalid state object")
-        if not species_re.fullmatch(key):
-            logger.error(
-                "invalid state key: model_id=%s", self.id
-            )
-            raise GillespieException("invalid state object")
-        super().__setitem__(key, value)
+        self.build_dependency_graph()
+        self.set = True
 
     def build_dependency_graph(self):
         """set dependency graph attribute"""
@@ -135,21 +104,22 @@ class Model(dict):
                 self.valid_events[eve] = (eve,sto,pro)
             else:
                 self.invalid_events[eve] = (eve,sto,pro)
-        self.build_dependency_graph()
 
     def equilibriated(self):
         """return True if simulation over else False"""
         if self["time"][-1] >= self.duration:
             logger.info("exit on duration: model_id=%s", self.id)
-            for key in self:
-                self[key].pop()
+            self.set = False
             return True
         elif self.steps == self.max_steps:
             logger.info("exit on steps: model_id=%s", self.id)
+            self.set = False
             return True
         elif not any(self.valid_events):
+            self.set = False
             return True
         elif any(h() for h in self.equilibrium_hooks):
+            self.set = False
             return True
         return False
 
@@ -167,11 +137,12 @@ class Model(dict):
 
     def reset(self):
         """reset self"""
-        self.steps = 0
-        for k in self:
-            del self[k][1:]
+        if self.set == False:
+            self.steps = 0
+            for k in self:
+                del self[k][1:]
 
-    def update(self, event):
+    def update_events(self, event):
         """update model given event"""
         self.steps += 1
         for dep_event in self.dep_graph[event]:
