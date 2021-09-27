@@ -1,5 +1,5 @@
 """stochastic simulation algorithm objects"""
-from logging import getLogger
+from logging import getLogger, ERROR
 from math import inf, log
 from random import random, seed
 from time import perf_counter
@@ -8,6 +8,7 @@ from .util import default_seed
 
 
 logger = getLogger(__name__)
+logger.setLevel(ERROR)
 
 
 class Base:
@@ -17,8 +18,7 @@ class Base:
         """construct self"""
         self.model = model
         self.trajectories = kwargs.get("trajectories", inf)
-        self.seed = kwargs.get("seed", default_seed)
-        seed(a=self.seed)
+        seed(a=self.model.seed)
         logger.info(
             "seed set: model_id=%s, seed_value=%s",
             model.id,
@@ -36,16 +36,15 @@ class Base:
     def __next__(self):
         """iterator protocol support"""
         while self.trajectories > 0:
-            for key in self.model:
-                del self.model[key][1:]
-            self.trajectories -= 1
+            self.model.reset()
             start = perf_counter()
             self.method()
             logger.info(
                 "simulation complete: model_id=%s, perf_time=%i",
-                model.id,
+                self.model.id,
                 perf_counter() - start
             )
+            self.trajectories -= 1
             return self.model
         raise StopIteration
 
@@ -63,7 +62,7 @@ class Direct(Base):
             weights = [
                 (event, stoic, prope(self.model))
                 for (event, stoic, prope)
-                in self.model["valid_events"]
+                in self.model.valid_events.values()
             ]
             partition = sum(w[-1] for w in weights)
             sojourn = log(1.0 / random()) / partition
@@ -73,7 +72,7 @@ class Direct(Base):
             partition = partition * random()
             while partition >= 0.0:
                 event, stoic, prope = weights.pop()
-                partition -= propen
+                partition -= prope
             for species, delta in stoic.items():
                 self.model[species].append(
                     self.model[species][-1] + delta
@@ -94,21 +93,23 @@ class FirstFamily(Base):
         while not self.model.equilibriated():
             families = list()
             family_size = len(
-                self.model["valid_events"]
+                self.model.valid_events
             ) // family_count
             for i in range(self.family_count):
                 j = i * family_size
                 family = [
                     (event, stoic, prope(self.model))
                     for (event, stoic, prope)
-                    in self.model["valid_events"][j:j + family_size]
+                    in list(self.model.valid_events.values())[
+                        j:j + family_size
+                    ]
                 ]
                 if len(
-                    self.model["valid_events"][j + family_size:]
+                    self.model.valid_events[j + family_size:]
                 ) < family_size:
-                    family += self.model[
-                        "valid_events"
-                    ][j + family_size:]
+                    family += self.model.valid_events[
+                        j + family_size:
+                    ]
                 families.append(
                     (
                         log(1.0 / random()) / sum(
@@ -124,7 +125,7 @@ class FirstFamily(Base):
                 partition = sum(f[-1] for f in family[-1]) * random()
                 while partition >= 0.0:
                     event, stoic, prope = weights.pop()
-                    partition -= propen
+                    partition -= prope
                 for species, delta in stoic.items():
                     self.model[species].append(
                         self.model[species][-1] + delta
@@ -140,7 +141,8 @@ class FirstReaction(Base):
         while not self.model.equilibriated():
             times = [
                 (log(1.0 / random()) / pro(self.model), sto)
-                for (eve, sto, pro) in self.model["valid_events"]
+                for (eve, sto, pro)
+                in self.model.valid_events.values()
             ]
             times.sort()
             self.model["time"].append(
