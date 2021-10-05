@@ -15,7 +15,7 @@ logger.setLevel(ERROR)
 
 
 class Model(dict):
-    """model for stochastic simulation algorithm"""
+    """simple model"""
 
     equilibrium_hooks = list()
     invalid_events = dict()
@@ -68,7 +68,7 @@ class Model(dict):
         ]:
             dep_graph[event] = [
                 species for species, delta
-                in objects[1].items() if delta > 0
+                in objects[1].items() if abs(delta) > 0
             ]
         for event, event_species in dep_graph.items():
             event_deps = list()
@@ -111,14 +111,14 @@ class Model(dict):
             logger.info("exit on duration: model_id=%s", self.id)
             self.set = False
             return True
-        elif self.steps == self.max_steps:
+        if self.steps == self.max_steps:
             logger.info("exit on steps: model_id=%s", self.id)
             self.set = False
             return True
-        elif not any(self.valid_events):
+        if not any(self.valid_events):
             self.set = False
             return True
-        elif any(h() for h in self.equilibrium_hooks):
+        if any(h() for h in self.equilibrium_hooks):
             self.set = False
             return True
         return False

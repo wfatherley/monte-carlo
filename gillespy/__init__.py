@@ -1,14 +1,10 @@
-"""gillespy"""
+"""gillespy: stochastic simulation algorithms"""
 from logging import (
-    getLogger,
-    handlers,
-    StreamHandler,
-    ERROR,
-    INFO
+    getLogger, handlers, StreamHandler, ERROR, INFO
 )
 from sys import platform
 
-from .method import Base, Direct, FirstFamily, FirstReaction
+from .method import Base, Direct, FirstReaction
 from .model import Model
 from .util import GillespyException
 
@@ -25,3 +21,7 @@ system_log_handler.setLevel(INFO)
 logger = getLogger("gillespy")
 logger.addHandler(stream_handler)
 logger.addHandler(system_log_handler)
+
+__all__ = [
+    "Base", "Direct", "FirstReaction", "Model", "GillespyException"
+]
