@@ -40,7 +40,6 @@ Then, pass this model instance to one of the simulation algorithm iterators:
 ```python
 # simulate with the "direct method"
 for simulation in gillespy.Direct(my_model):
-    print(simulation)
     # prints, e.g.:
     # {
     #   "a": [5, 6, 5, 5, 4, 3],

@@ -61,28 +61,20 @@ class Direct(Base):
     
     def method(self):
         """implementation"""
-        self.model.reset()
+        self.model.initialize()
         while not self.model.equilibriated():
-            print(self.model.dep_graph)
             weights = [
-                (event, stoic, prope(self.model))
-                for (event, stoic, prope)
+                (eve, sto, pro(self.model))
+                for (eve, sto, pro)
                 in self.model.valid_events.values()
             ]
             partition = sum(w[-1] for w in weights)
             sojourn = log(1.0 / random()) / partition
-            self.model["time"].append(
-                self.model["time"][-1] + sojourn
-            )
             partition = partition * random()
             while partition >= 0.0:
-                event, stoic, prope = weights.pop()
-                partition -= prope
-            for species, delta in stoic.items():
-                self.model[species].append(
-                    self.model[species][-1] + delta
-                )
-            self.model.update_events(event)
+                eve, sto, pro = weights.pop()
+                partition -= pro
+            self.model.update(eve, sto, sojourn)
 
 
 class FirstReaction(Base):
@@ -90,19 +82,12 @@ class FirstReaction(Base):
     
     def method(self):
         """implementation"""
-        self.model.reset()
+        self.model.initialize()
         while not self.model.equilibriated():
             times = [
-                (log(1.0 / random()) / pro(self.model), sto, eve)
+                (eve, sto, log(1.0 / random()) / pro(self.model))
                 for (eve, sto, pro)
                 in self.model.valid_events.values()
             ]
-            times.sort()
-            self.model["time"].append(
-                self.model["time"][-1] + times[0][0]
-            )
-            for species, delta in times[0][1].items():
-                self.model[species].append(
-                    self.model[species][-1] + delta
-                )
-            self.model.update_events(times[0][-1])
+            times.sort(key=lambda tup: tup[-1])
+            self.model.update(*times[0])

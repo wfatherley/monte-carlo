@@ -3,38 +3,42 @@ from logging import getLogger, ERROR
 from math import inf
 from secrets import choice
 from string import ascii_letters, digits
-
-from .util import species_re, zero_propensity, GillespyException
-
-
-__all__ = ["Model",]
+from re import compile, ASCII
 
 
 logger = getLogger(__name__)
 logger.setLevel(ERROR)
 
 
+species_re = compile(r"([a-zA-Z]{1}\w{,31})", flags=ASCII)
+
+
 class Model(dict):
     """simple model"""
 
+    dependency_graph = dict()
     equilibrium_hooks = list()
     invalid_events = dict()
     valid_events = dict()
     
     def __getitem__(self, key):
         """return `key` state entity"""
-        if key == "soujorn":
-            return self["time"][0] + [
-                self["time"][k] - self["time"][k-1]
-                for k in range(1, len(self["time"]))
-            ]
         try:
+            if key == "soujorn":
+                return [self["time"][0]] + [
+                    self["time"][k] - self["time"][k-1]
+                    for k in range(1, len(self["time"]))
+                ]
             return super().__getitem__(key)
         except KeyError:
             logger.error(
-                "bad key passed: model_id=%s, key=%s", self.id, key
+                "bad or missing key: model_id=%s, key=%s",
+                self.id,
+                key
             )
             raise
+        except IndexError:
+            return self["time"]
 
     def __init__(self, **kwargs):
         """construct self"""
@@ -55,7 +59,6 @@ class Model(dict):
             propensity=propensity, stoichiometry=stoichiometry
         )
         self.build_dependency_graph()
-        self.set = True
 
     def build_dependency_graph(self):
         """set dependency graph attribute"""
@@ -77,16 +80,7 @@ class Model(dict):
                     set(dep_graph[other_event])
                 ):
                     event_deps.append(other_event)
-            dep_graph[event] = event_deps
-        self.dep_graph = dep_graph
-
-    def build_propensity_lambda(self, propensity):
-        """return anonymous, evaluable propensity"""
-        return eval(
-            "lambda d: " + species_re.sub(
-                lambda mo: "d['" + mo.group(0) + "'][-1]", propensity
-            )
-        )
+            self.dependency_graph[event] = event_deps
 
     def build_events(self, propensity={}, stoichiometry={}):
         """add or modify model events"""
@@ -94,32 +88,39 @@ class Model(dict):
             logger.error(
                 "mismatched event names: model_id=%s", self.id
             )
-            raise GillespyException("bad event objects")
+            raise Exception("bad event objects")
         for eve, sto, pro in tuple(
             (eve, stoichiometry[eve], propensity[eve])
             for eve in stoichiometry.keys()
         ):
-            pro = self.build_propensity_lambda(pro)
-            if pro(self) > zero_propensity:
+            pro = self.build_propensity(pro)
+            if pro(self) > 10**-15:
                 self.valid_events[eve] = (eve,sto,pro)
             else:
                 self.invalid_events[eve] = (eve,sto,pro)
+
+    def build_propensity(self, propensity):
+        """return anonymous, evaluable propensity"""
+        if isinstance(propensity, str):
+            return eval(
+                "lambda d: " + species_re.sub(
+                    lambda mo: "d['" + mo.group(0) + "'][-1]",
+                    propensity
+                )
+            )
+        return propensity
 
     def equilibriated(self):
         """return True if simulation over else False"""
         if self["time"][-1] >= self.duration:
             logger.info("exit on duration: model_id=%s", self.id)
-            self.set = False
             return True
         if self.steps == self.max_steps:
             logger.info("exit on steps: model_id=%s", self.id)
-            self.set = False
             return True
-        if not any(self.valid_events):
-            self.set = False
+        if len(self.valid_events) == 0:
             return True
         if any(h() for h in self.equilibrium_hooks):
-            self.set = False
             return True
         return False
 
@@ -128,24 +129,28 @@ class Model(dict):
         def wrapped_hook():
             """return True if `func` detects equilibrium"""
             if func(self) is True:
-                logger.info(
-                    func.__doc__.strip() + ": model_id=%s", self.id
-                )
+                func_doc = func.__doc__.strip() or func.__name__
+                logger.info(func_doc + ": model_id=%s", self.id)
                 return True
             return False
         self.equilibrium_hooks.append(wrapped_hook)
 
-    def reset(self):
-        """reset self"""
-        if self.set == False:
-            self.steps = 0
-            for k in self:
-                del self[k][1:]
+    def initialize(self):
+        """initialize self"""
+        self.steps = 0
+        for k in self:
+            del self[k][1:]
+
+    def update(self, event, stoichiometry, sojourn):
+        """update self given event"""
+        self.steps += 1
+        self.update_time(sojourn)
+        self.update_species(stoichiometry)
+        self.update_events(event)
 
     def update_events(self, event):
-        """update model given event"""
-        self.steps += 1
-        for dep_event in self.dep_graph[event]:
+        """update model events"""
+        for dep_event in self.dependency_graph[event]:
             try:
                 pro = self.valid_events[dep_event][2](self)
                 if pro <= zero_propensity:
@@ -156,3 +161,12 @@ class Model(dict):
                 if pro > zero_propensity:
                     eve = self.invalid_events.pop(dep_event)
                     self.valid_events[dep_event] = eve
+
+    def update_species(self, stoichiometry):
+        """update model species"""
+        for species, delta in stoichiometry.items():
+            self[species].append(self[species][-1] + delta)
+
+    def update_time(self, sojourn):
+        """update model time"""
+        self["time"].append(self["time"][-1] + sojourn)
