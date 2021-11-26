@@ -7,7 +7,6 @@ from time import perf_counter
 
 
 logger = getLogger(__name__)
-logger.setLevel(ERROR)
 
 
 class Base:

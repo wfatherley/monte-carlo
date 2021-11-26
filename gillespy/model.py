@@ -24,7 +24,7 @@ class Model(dict):
     def __getitem__(self, key):
         """return `key` state entity"""
         try:
-            if key == "soujorn":
+            if key == "sojourn":
                 return [self["time"][0]] + [
                     self["time"][k] - self["time"][k-1]
                     for k in range(1, len(self["time"]))
@@ -42,7 +42,7 @@ class Model(dict):
 
     def __init__(self, **kwargs):
         """construct self"""
-        self.id = "".join(
+        self.id = kwargs.pop("id", None) or "".join(
             choice(ascii_letters + digits) for _ in range(32)
         )
         self.duration = kwargs.pop("duration", inf)
@@ -137,9 +137,18 @@ class Model(dict):
 
     def initialize(self):
         """initialize self"""
-        self.steps = 0
-        for k in self:
-            del self[k][1:]
+        if self.steps > 0:
+            for k in self:
+                del self[k][1:]
+            for eve, sto, pro in (
+                list(self.valid_events.values())
+                + list(self.invalid_events.values())
+            ):
+                if pro(self) > 10**-15:
+                    self.valid_events[eve] = (eve,sto,pro)
+                else:
+                    self.invalid_events[eve] = (eve,sto,pro)
+            self.steps = 0
 
     def update(self, event, stoichiometry, sojourn):
         """update self given event"""
@@ -153,12 +162,12 @@ class Model(dict):
         for dep_event in self.dependency_graph[event]:
             try:
                 pro = self.valid_events[dep_event][2](self)
-                if pro <= zero_propensity:
+                if pro <= 10**-15:
                     eve = self.valid_events.pop(dep_event)
                     self.invalid_events[dep_event] = eve
             except KeyError:
                 pro = self.invalid_events[dep_event][2](self)
-                if pro > zero_propensity:
+                if pro > 10**-15:
                     eve = self.invalid_events.pop(dep_event)
                     self.valid_events[dep_event] = eve
 
