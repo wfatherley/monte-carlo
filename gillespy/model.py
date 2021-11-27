@@ -16,7 +16,7 @@ species_re = compile(r"([a-zA-Z]{1}\w{,31})", flags=ASCII)
 class Model(dict):
     """simple model"""
 
-    dependency_graph = dict()
+    dependency_map = dict()
     equilibrium_hooks = list()
     invalid_events = dict()
     valid_events = dict()
@@ -58,29 +58,29 @@ class Model(dict):
         self.build_events(
             propensity=propensity, stoichiometry=stoichiometry
         )
-        self.build_dependency_graph()
+        self.build_dependency_map()
 
-    def build_dependency_graph(self):
-        """set dependency graph attribute"""
-        dep_graph = dict()
+    def build_dependency_map(self):
+        """set dependency map attribute"""
+        dep_map = dict()
         for event, objects in [
             (tup[0], tup) for tup in (
                 list(self.invalid_events.values())
                 + list(self.valid_events.values())
             )
         ]:
-            dep_graph[event] = [
+            dep_map[event] = [
                 species for species, delta
                 in objects[1].items() if abs(delta) > 0
             ]
-        for event, event_species in dep_graph.items():
+        for event, event_species in dep_map.items():
             event_deps = list()
-            for other_event in dep_graph.keys():
+            for other_event in dep_map.keys():
                 if not set(event_species).isdisjoint(
-                    set(dep_graph[other_event])
+                    set(dep_map[other_event])
                 ):
                     event_deps.append(other_event)
-            self.dependency_graph[event] = event_deps
+            self.dependency_map[event] = event_deps
 
     def build_events(self, propensity={}, stoichiometry={}):
         """add or modify model events"""
@@ -159,7 +159,7 @@ class Model(dict):
 
     def update_events(self, event):
         """update model events"""
-        for dep_event in self.dependency_graph[event]:
+        for dep_event in self.dependency_map[event]:
             try:
                 pro = self.valid_events[dep_event][2](self)
                 if pro <= 10**-15:
