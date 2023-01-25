@@ -52,7 +52,7 @@ class Base:
 
     def method(self):
         """stochastic simulation algorithm"""
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class Direct(Base):
