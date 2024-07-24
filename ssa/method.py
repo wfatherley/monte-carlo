@@ -92,9 +92,4 @@ class FirstReaction(Base):
             self.model.update(*times[0])
 
 
-class NextReaction(Base):
-    """next-reaction stochastic simulation algorithm"""
-    pass
-
-
 __all__ = ["Base", "Direct", "FirstReaction", "NextReaction",]
